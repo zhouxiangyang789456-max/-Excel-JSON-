@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c0eb7ed8477a2a4685e1869d5683c56, type: 3}
+  m_Name: ArrayEdge
+  m_EditorClassIdentifier: 
+  rows:
+  - id: 1
+    neg_arr: fbffffff0000000003000000
+    big_arr: 3f420f0000000000c86ff2ff
+    single_arr: 2a000000
+    empty: 
+    pipe_float:
+    - 1.5
+    - 2
+    - 3.14
+    mixed: 010000000200000003000000
+  - id: 2
+    neg_arr: 9cffffff32000000ffffffff
+    big_arr: 00000000
+    single_arr: 07000000
+    empty: 
+    pipe_float:
+    - 0.1
+    - 99.9
+    mixed: 64000000

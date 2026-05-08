@@ -1,0 +1,13 @@
+﻿{
+  "excelFileName": "Skill.xlsx",
+  "sheetName": "Skill",
+  "version": 1,
+  "columns": [
+    {"name": "id", "type": "int", "index": 0},
+    {"name": "name", "type": "string", "index": 1},
+    {"name": "type", "type": "string", "index": 2},
+    {"name": "power", "type": "int", "index": 3},
+    {"name": "cost", "type": "int", "index": 4},
+    {"name": "desc", "type": "string", "index": 5}
+  ]
+}

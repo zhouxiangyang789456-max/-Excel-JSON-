@@ -4,6 +4,9 @@ using System.IO;
 using System.Linq;
 using ExcelToJsonPlugin.Editor.Core;
 using ExcelToJsonPlugin.Editor.Core.Models;
+using ExcelToJsonPlugin.Editor.Generator;
+using ExcelToJsonPlugin.Editor.Mapping;
+using ExcelToJsonPlugin.Editor.Watcher;
 using ExcelToJsonPlugin.Runtime;
 using UnityEditor;
 using UnityEngine;
@@ -40,6 +43,10 @@ namespace ExcelToJsonPlugin.Editor.UI
         private RuntimeDrawer runtimeDrawer;
         private DashboardDrawer dashboardDrawer;
 
+        // File watcher (static to persist between window open/close)
+        private static ExcelFileWatcher fileWatcher;
+        private DateTime? lastExportTime;
+
         // ===== 入口 =====
         [MenuItem("Window/Excel Data Manager", priority = 100)]
         public static void ShowWindow()
@@ -59,11 +66,23 @@ namespace ExcelToJsonPlugin.Editor.UI
             dashboardDrawer = new DashboardDrawer(this);
 
             RefreshFileList();
+            StartFileWatcherIfEnabled();
+        }
+
+        private void OnDisable()
+        {
+            // Do not stop watcher here — it persists via static reference
+        }
+
+        private void OnDestroy()
+        {
+            // Only stop on final destroy
         }
 
         private void OnFocus()
         {
             RefreshFileList();
+            StartFileWatcherIfEnabled();
         }
 
         // ===== 刷新文件列表 =====
@@ -112,6 +131,7 @@ namespace ExcelToJsonPlugin.Editor.UI
         // ===== 绘制 =====
         private void OnGUI()
         {
+            HandleKeyboardShortcuts();
             DrawToolbar();
 
             EditorGUILayout.BeginHorizontal();
@@ -129,6 +149,7 @@ namespace ExcelToJsonPlugin.Editor.UI
             // 右侧：标签页内容
             EditorGUILayout.BeginVertical();
             DrawTabBar();
+            DrawSheetInfoBar(); // Sheet info + mapping mode selector
             DrawTabContent();
             EditorGUILayout.EndVertical();
 
@@ -143,20 +164,28 @@ namespace ExcelToJsonPlugin.Editor.UI
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
 
-            GUILayout.Label("Excel Data Manager", EditorStyles.boldLabel);
+            GUILayout.Label(Loc.Tr("window_title"), EditorStyles.boldLabel);
 
             GUILayout.FlexibleSpace();
 
-            if (GUILayout.Button("Refresh", EditorStyles.toolbarButton, GUILayout.Width(60)))
+            if (GUILayout.Button(Loc.Tr("toolbar_refresh"), EditorStyles.toolbarButton, GUILayout.Width(55)))
                 RefreshFileList();
 
-            if (GUILayout.Button("Export All", EditorStyles.toolbarButton, GUILayout.Width(70)))
+            if (GUILayout.Button(Loc.Tr("toolbar_export_all"), EditorStyles.toolbarButton, GUILayout.Width(65)))
                 RunExportAll();
 
-            if (GUILayout.Button("Validate", EditorStyles.toolbarButton, GUILayout.Width(60)))
+            if (GUILayout.Button(Loc.Tr("toolbar_validate"), EditorStyles.toolbarButton, GUILayout.Width(55)))
                 RunValidate();
 
-            GUILayout.Space(10);
+            if (GUILayout.Button(Loc.Tr("toolbar_template"), EditorStyles.toolbarButton, GUILayout.Width(60)))
+            {
+                var paths = Mapping.TemplateExporter.GenerateAllTemplates("Excel");
+                var count = paths?.Count ?? 0;
+                SetStatus(Loc.Tr("template_generated", count));
+                RefreshFileList();
+            }
+
+            GUILayout.Space(5);
 
             if (GUILayout.Button(EditorGUIUtility.IconContent("_Popup"), EditorStyles.toolbarButton, GUILayout.Width(30)))
                 SettingsWindow.ShowWindow();
@@ -167,22 +196,22 @@ namespace ExcelToJsonPlugin.Editor.UI
         // ===== 文件树 =====
         private void DrawFileTree()
         {
-            EditorGUILayout.LabelField("Files", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(Loc.Tr("files"), EditorStyles.boldLabel);
 
             searchFilter = EditorGUILayout.TextField(searchFilter, EditorStyles.toolbarSearchField);
             if (!string.IsNullOrEmpty(searchFilter))
-                EditorGUILayout.LabelField($"  Filter: \"{searchFilter}\"", EditorStyles.miniLabel);
+                EditorGUILayout.LabelField($"  {Loc.Tr("filter")}: \"{searchFilter}\"", EditorStyles.miniLabel);
 
             // Multi-select controls
             if (multiSelectedFiles.Count > 0)
             {
                 EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.LabelField($"{multiSelectedFiles.Count} selected", EditorStyles.miniLabel);
-                if (GUILayout.Button("Export Selected", EditorStyles.miniButton, GUILayout.Width(90)))
+                EditorGUILayout.LabelField(Loc.Tr("selected_count", multiSelectedFiles.Count), EditorStyles.miniLabel);
+                if (GUILayout.Button(Loc.Tr("export_selected"), EditorStyles.miniButton, GUILayout.Width(90)))
                     RunExportSelected();
-                if (GUILayout.Button("Validate Selected", EditorStyles.miniButton, GUILayout.Width(100)))
+                if (GUILayout.Button(Loc.Tr("validate_selected"), EditorStyles.miniButton, GUILayout.Width(100)))
                     RunValidateSelected();
-                if (GUILayout.Button("Clear", EditorStyles.miniButton, GUILayout.Width(40)))
+                if (GUILayout.Button(Loc.Tr("clear"), EditorStyles.miniButton, GUILayout.Width(40)))
                     multiSelectedFiles.Clear();
                 EditorGUILayout.EndHorizontal();
                 EditorGUILayout.Space(3);
@@ -232,10 +261,10 @@ namespace ExcelToJsonPlugin.Editor.UI
                 if (Event.current.type == EventType.ContextClick && lastRect.Contains(Event.current.mousePosition))
                 {
                     var menu = new GenericMenu();
-                    menu.AddItem(new GUIContent("Export This File"), false, () => RunExportSingle(entry.RelativePath, null));
-                    menu.AddItem(new GUIContent("Validate This File"), false, () => RunValidateSingle(entry.RelativePath, null));
-                    menu.AddItem(new GUIContent("Open Excel"), false, () => OpenExcel(entry.FullPath));
-                    menu.AddItem(new GUIContent("Add to Selection"), false, () => multiSelectedFiles.Add(entry.RelativePath));
+                    menu.AddItem(new GUIContent(Loc.Tr("export_this_file")), false, () => RunExportSingle(entry.RelativePath, null));
+                    menu.AddItem(new GUIContent(Loc.Tr("validate_this_file")), false, () => RunValidateSingle(entry.RelativePath, null));
+                    menu.AddItem(new GUIContent(Loc.Tr("open_excel")), false, () => OpenExcel(entry.FullPath));
+                    menu.AddItem(new GUIContent(Loc.Tr("add_to_selection")), false, () => multiSelectedFiles.Add(entry.RelativePath));
                     menu.ShowAsContext();
                     Event.current.Use();
                 }
@@ -263,9 +292,9 @@ namespace ExcelToJsonPlugin.Editor.UI
                         if (Event.current.type == EventType.ContextClick && sheetRect.Contains(Event.current.mousePosition))
                         {
                             var menu = new GenericMenu();
-                            menu.AddItem(new GUIContent("Export This Sheet"), false, () => RunExportSingle(entry.RelativePath, sheet.Name));
-                            menu.AddItem(new GUIContent("Validate This Sheet"), false, () => RunValidateSingle(entry.RelativePath, sheet.Name));
-                            menu.AddItem(new GUIContent("Open Excel"), false, () => OpenExcel(entry.FullPath));
+                            menu.AddItem(new GUIContent(Loc.Tr("export_this_sheet")), false, () => RunExportSingle(entry.RelativePath, sheet.Name));
+                            menu.AddItem(new GUIContent(Loc.Tr("validate_this_sheet")), false, () => RunValidateSingle(entry.RelativePath, sheet.Name));
+                            menu.AddItem(new GUIContent(Loc.Tr("open_excel")), false, () => OpenExcel(entry.FullPath));
                             menu.ShowAsContext();
                             Event.current.Use();
                         }
@@ -277,7 +306,7 @@ namespace ExcelToJsonPlugin.Editor.UI
             EditorGUILayout.EndScrollView();
 
             EditorGUILayout.Space(5);
-            if (GUILayout.Button("+ Add Excel Directory"))
+            if (GUILayout.Button(Loc.Tr("add_excel_dir")))
             {
                 var newDir = EditorUtility.OpenFolderPanel("Select Excel Directory", "Assets", "");
                 if (!string.IsNullOrEmpty(newDir))
@@ -339,11 +368,15 @@ namespace ExcelToJsonPlugin.Editor.UI
         }
 
         // ===== 标签页 =====
-        private static readonly string[] TabNames = { "Dashboard", "Data Preview", "Validation", "Export", "Runtime API" };
+        private static string[] GetTabNames() => new[]
+        {
+            Loc.Tr("tab_dashboard"), Loc.Tr("tab_data_preview"), Loc.Tr("tab_validation"),
+            Loc.Tr("tab_export"), Loc.Tr("tab_runtime"),
+        };
 
         private void DrawTabBar()
         {
-            currentTab = GUILayout.Toolbar(currentTab, TabNames);
+            currentTab = GUILayout.Toolbar(currentTab, GetTabNames());
         }
 
         private void DrawTabContent()
@@ -360,13 +393,121 @@ namespace ExcelToJsonPlugin.Editor.UI
             EditorGUILayout.EndScrollView();
         }
 
+        // ===== Sheet Info Bar =====
+        private void DrawSheetInfoBar()
+        {
+            if (string.IsNullOrEmpty(selectedFilePath) || string.IsNullOrEmpty(selectedSheetName))
+                return;
+
+            var schema = GetSchema(selectedFilePath, selectedSheetName);
+            var rows = GetSheetData(selectedFilePath, selectedSheetName);
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.BeginHorizontal();
+
+            // File + Sheet info
+            var fileInfo = $"{Path.GetFileName(selectedFilePath)} → {selectedSheetName}";
+            var rowCount = rows?.Count ?? 0;
+            var colCount = schema?.Fields?.Count ?? 0;
+            EditorGUILayout.LabelField($"{fileInfo}  ({rowCount} rows, {colCount} cols)", EditorStyles.boldLabel);
+
+            GUILayout.FlexibleSpace();
+
+            // Mapping mode selector
+            EditorGUILayout.LabelField(Loc.Tr("mapping_mode"), GUILayout.Width(60));
+            var prefKey = $"ExcelToJson.SheetMode.{selectedSheetName}";
+            var currentMode = EditorPrefs.GetInt(prefKey, 0);
+            var modeNames = new[] { Loc.Tr("mode_auto"), Loc.Tr("mode_a"), Loc.Tr("mode_b") };
+            var newMode = EditorGUILayout.Popup(currentMode, modeNames, GUILayout.Width(100));
+            if (newMode != currentMode)
+            {
+                EditorPrefs.SetInt(prefKey, newMode);
+                Debug.Log($"[ExcelToJSON] {selectedSheetName}: 映射模式切换为 {(newMode == 0 ? "Auto" : newMode == 1 ? "Mode A" : "Mode B")}");
+            }
+
+            // Target class display
+            var targetClass = GetTargetClassDisplay(currentMode, selectedSheetName);
+            if (!string.IsNullOrEmpty(targetClass))
+            {
+                EditorGUILayout.LabelField(Loc.Tr("target_class"), GUILayout.Width(45));
+                EditorGUILayout.LabelField(targetClass, EditorStyles.miniLabel);
+            }
+
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
+        }
+
+        private string GetTargetClassDisplay(int mode, string sheetName)
+        {
+            if (mode == 1) // Mode A forced
+                return $"{CodeGenerator.ToPascalCaseStatic(sheetName)}Row (auto-generated)";
+
+            // Check if [ExcelTable] class exists
+            var sheetMap = Mapping.AttributeMapping.ScanTableSheetMap();
+            if (sheetMap.TryGetValue(sheetName, out var mappedType))
+                return $"{mappedType.Name} (C# class)";
+
+            if (mode == 2) // Mode B forced but no class found
+                return "(no [ExcelTable] class found)";
+
+            return $"{CodeGenerator.ToPascalCaseStatic(sheetName)}Row (auto-generated)";
+        }
+
+        // ===== 快捷键 =====
+        private void HandleKeyboardShortcuts()
+        {
+            var e = Event.current;
+            if (e.type != EventType.KeyDown) return;
+
+            // Ctrl+E: Export selected file
+            if (e.control && e.keyCode == KeyCode.E && !e.shift)
+            {
+                if (!string.IsNullOrEmpty(selectedFilePath))
+                    RunExportSingle(selectedFilePath, selectedSheetName);
+                e.Use();
+            }
+            // Ctrl+Shift+E: Export all
+            else if (e.control && e.shift && e.keyCode == KeyCode.E)
+            {
+                RunExportAll();
+                e.Use();
+            }
+            // Ctrl+V: Validate
+            else if (e.control && e.keyCode == KeyCode.V)
+            {
+                RunValidate();
+                e.Use();
+            }
+            // Ctrl+R or F5: Refresh
+            else if ((e.control && e.keyCode == KeyCode.R) || e.keyCode == KeyCode.F5)
+            {
+                RefreshFileList();
+                e.Use();
+            }
+        }
+
         // ===== 状态栏 =====
         private void DrawStatusBar()
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
             var style = statusIsError ? new GUIStyle(EditorStyles.label) { normal = { textColor = Color.red } }
                                       : EditorStyles.label;
-            GUILayout.Label(string.IsNullOrEmpty(statusMessage) ? "Ready" : statusMessage, style);
+            GUILayout.Label(string.IsNullOrEmpty(statusMessage) ? Loc.Tr("ready") : statusMessage, style);
+
+            GUILayout.FlexibleSpace();
+
+            if (lastExportTime.HasValue)
+            {
+                EditorGUILayout.LabelField(
+                    $"{Loc.Tr("last_export")} {lastExportTime.Value:HH:mm:ss}",
+                    EditorStyles.miniLabel, GUILayout.Width(120));
+            }
+
+            // Keyboard shortcut hint
+            EditorGUILayout.LabelField(
+                Loc.Tr("shortcut_hint"),
+                EditorStyles.miniLabel, GUILayout.Width(220));
+
             EditorGUILayout.EndHorizontal();
         }
 
@@ -400,9 +541,12 @@ namespace ExcelToJsonPlugin.Editor.UI
                     AssetDatabase.Refresh();
 
                 if (result.Success)
-                    SetStatus($"Export complete: {result.FilesProcessed} files, {result.SheetsProcessed} sheets, {result.TotalRows} rows ({result.Elapsed.TotalSeconds:F1}s)");
+                {
+                    lastExportTime = DateTime.Now;
+                    SetStatus(Loc.Tr("status_export_complete", result.FilesProcessed, result.SheetsProcessed, result.TotalRows, result.Elapsed.TotalSeconds));
+                }
                 else
-                    SetStatus($"Export errors: {result.ErrorCount} errors, {result.WarningCount} warnings", true);
+                    SetStatus(Loc.Tr("status_export_error", result.ErrorCount, result.WarningCount), true);
 
                 // Show completion
                 if (!Application.isBatchMode)
@@ -442,13 +586,13 @@ namespace ExcelToJsonPlugin.Editor.UI
 
                 if (result.ErrorCount > 0)
                 {
-                    SetStatus($"Validation: {result.ErrorCount} errors, {result.WarningCount} warnings", true);
+                    SetStatus(Loc.Tr("status_validate_error", result.ErrorCount, result.WarningCount), true);
                     currentTab = 2;
                     validationDrawer?.SetReport(result.ValidationReport);
                 }
                 else
                 {
-                    SetStatus($"Validation passed: {result.SheetsProcessed} sheets OK");
+                    SetStatus(Loc.Tr("status_validate_pass", result.SheetsProcessed));
                 }
             }
             finally
@@ -459,20 +603,23 @@ namespace ExcelToJsonPlugin.Editor.UI
 
         public void RunExportSingle(string filePath, string sheetName)
         {
-            SetStatus($"Exporting {Path.GetFileName(filePath)}/{sheetName}...");
+            SetStatus(Loc.Tr("status_exporting", Path.GetFileName(filePath)) + "...");
             var options = PipelineOptions();
             var result = Pipeline.ProcessFile(Path.Combine(excelDir, filePath), options);
             AssetDatabase.Refresh();
 
+            if (result.Success)
+                lastExportTime = DateTime.Now;
+
             SetStatus(result.Success
-                ? $"Exported {Path.GetFileName(filePath)}: {result.SheetsProcessed} sheets, {result.TotalRows} rows"
-                : $"Export error: {result.ErrorCount} errors",
+                ? Loc.Tr("status_export_complete", 1, result.SheetsProcessed, result.TotalRows, 0)
+                : Loc.Tr("status_export_error", result.ErrorCount, result.WarningCount),
                 !result.Success);
         }
 
         public void RunValidateSingle(string filePath, string sheetName)
         {
-            SetStatus($"Validating {Path.GetFileName(filePath)}/{sheetName}...");
+            SetStatus(Loc.Tr("status_exporting", Path.GetFileName(filePath)) + "...");
             var options = PipelineOptions();
             var result = Pipeline.ProcessFile(Path.Combine(excelDir, filePath), options);
 
@@ -482,8 +629,8 @@ namespace ExcelToJsonPlugin.Editor.UI
                 validationDrawer?.SetReport(result.ValidationReport);
             }
             SetStatus(result.ErrorCount > 0
-                ? $"Validation: {result.ErrorCount} errors"
-                : "Validation passed", result.ErrorCount > 0);
+                ? Loc.Tr("status_validate_error", result.ErrorCount, result.WarningCount)
+                : Loc.Tr("status_validate_pass", 0), result.ErrorCount > 0);
         }
 
         public void RunExportSelected()
@@ -658,6 +805,32 @@ namespace ExcelToJsonPlugin.Editor.UI
                     new[] { "_", "#" });
             }
             catch { return null; }
+        }
+
+        // ===== File Watcher =====
+        private void StartFileWatcherIfEnabled()
+        {
+            var enableAutoExport = EditorPrefs.GetBool("ExcelToJson.AutoExport", false);
+            var debounceMs = EditorPrefs.GetInt("ExcelToJson.DebounceMs", 500);
+
+            var fullPath = Path.GetFullPath(excelDir);
+
+            if (enableAutoExport)
+            {
+                if (fileWatcher == null)
+                {
+                    fileWatcher = new ExcelFileWatcher();
+                    fileWatcher.Start(fullPath, debounceMs);
+                }
+                else if (!fileWatcher.IsRunning)
+                {
+                    fileWatcher.Start(fullPath, debounceMs);
+                }
+            }
+            else if (fileWatcher != null && fileWatcher.IsRunning)
+            {
+                fileWatcher.Stop();
+            }
         }
     }
 

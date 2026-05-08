@@ -1,0 +1,9 @@
+﻿{
+  "excelFileName": "Test06_SkipSheets.xlsx",
+  "sheetName": "Weapon",
+  "version": 1,
+  "columns": [
+    {"name": "id", "type": "int", "index": 0},
+    {"name": "name", "type": "string", "index": 1}
+  ]
+}

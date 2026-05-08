@@ -1,0 +1,13 @@
+﻿{
+  "excelFileName": "Test02_Arrays.xlsx",
+  "sheetName": "Arrays",
+  "version": 1,
+  "columns": [
+    {"name": "id", "type": "int", "index": 0},
+    {"name": "json_arr", "type": "int[]", "index": 1},
+    {"name": "pipe_arr", "type": "int[]", "index": 2},
+    {"name": "single", "type": "int[]", "index": 3},
+    {"name": "empty_arr", "type": "int[]", "index": 4},
+    {"name": "float_arr", "type": "float[]", "index": 5}
+  ]
+}

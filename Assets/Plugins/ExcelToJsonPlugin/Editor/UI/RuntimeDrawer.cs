@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using ExcelToJsonPlugin.Editor.Core;
 using UnityEditor;
 using UnityEngine;
 
@@ -14,25 +15,20 @@ namespace ExcelToJsonPlugin.Editor.UI
 
         public void Draw(string selectedFile, string selectedSheet, List<ExcelFileEntry> entries)
         {
-            EditorGUILayout.LabelField("Runtime API Reference", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(Loc.Tr("runtime_title"), EditorStyles.boldLabel);
             EditorGUILayout.Space(5);
 
             // Quick start
-            EditorGUILayout.LabelField("Quick Start", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "1. Click 'Generate DataManager' button below\n" +
-                "2. In your game code:\n" +
-                "   var t = DataManager.Instance.GetTable<YourTable>();\n" +
-                "   var row = t.Get(id);",
-                MessageType.Info);
+            EditorGUILayout.LabelField(Loc.Tr("quick_start"), EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(Loc.Tr("quick_start_text"), MessageType.Info);
 
-            if (GUILayout.Button("Auto-Generate DataManager GameObject", GUILayout.Height(35)))
+            if (GUILayout.Button(Loc.Tr("gen_datamanager_btn"), GUILayout.Height(35)))
                 GenerateDataManagerGO();
 
             EditorGUILayout.Space(15);
 
             // API reference
-            EditorGUILayout.LabelField("API Reference", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(Loc.Tr("api_ref"), EditorStyles.boldLabel);
             DrawApiBox(
                 "GetTable<T>()",
                 "var t = DataManager.Instance.GetTable<WeaponTable>();\nvar row = t.Get(1001);",

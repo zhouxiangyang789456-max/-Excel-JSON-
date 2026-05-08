@@ -1,0 +1,16 @@
+﻿{
+  "excelFileName": "Test07_BoolEdge.xlsx",
+  "sheetName": "BoolTest",
+  "version": 1,
+  "columns": [
+    {"name": "id", "type": "int", "index": 0},
+    {"name": "b1", "type": "bool", "index": 1},
+    {"name": "b2", "type": "bool", "index": 2},
+    {"name": "b3", "type": "bool", "index": 3},
+    {"name": "b4", "type": "bool", "index": 4},
+    {"name": "b5", "type": "bool", "index": 5},
+    {"name": "b6", "type": "bool", "index": 6},
+    {"name": "b7", "type": "bool", "index": 7},
+    {"name": "b8", "type": "bool", "index": 8}
+  ]
+}

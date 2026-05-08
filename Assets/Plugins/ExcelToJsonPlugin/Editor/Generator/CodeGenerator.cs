@@ -163,12 +163,17 @@ namespace ExcelToJsonPlugin.Editor.Generator
 
         public static string GetRowClassName(string tableName, Config config)
         {
-            return ToPascalCase(tableName) + config.RowSuffix;
+            return ToPascalCaseStatic(tableName) + config.RowSuffix;
+        }
+
+        public static string ToPascalCaseStatic(string name)
+        {
+            return ToPascalCase(name);
         }
 
         public static string GetTableClassName(string tableName, Config config)
         {
-            return ToPascalCase(tableName) + config.TableSuffix;
+            return ToPascalCaseStatic(tableName) + config.TableSuffix;
         }
 
         /// <summary>

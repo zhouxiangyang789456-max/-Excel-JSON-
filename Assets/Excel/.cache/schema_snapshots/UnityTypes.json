@@ -1,0 +1,12 @@
+﻿{
+  "excelFileName": "Test03_UnityTypes.xlsx",
+  "sheetName": "UnityTypes",
+  "version": 1,
+  "columns": [
+    {"name": "id", "type": "int", "index": 0},
+    {"name": "pos2", "type": "Vector2", "index": 1},
+    {"name": "pos3", "type": "Vector3", "index": 2},
+    {"name": "color_hex", "type": "Color", "index": 3},
+    {"name": "color_rgba", "type": "Color", "index": 4}
+  ]
+}

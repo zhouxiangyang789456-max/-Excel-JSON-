@@ -1,0 +1,29 @@
+﻿[
+  {
+    "id": 1,
+    "name": "???",
+    "ref_val": 100,
+    "enum_val": 1,
+    "icon": "Ui/Icon/Main",
+    "prefab": "Prefabs/Main",
+    "sound": "Audio/SFX/Click"
+  },
+  {
+    "id": 2,
+    "name": "???",
+    "ref_val": 101,
+    "enum_val": 2,
+    "icon": "Ui/Icon/Sub",
+    "prefab": "0",
+    "sound": "0"
+  },
+  {
+    "id": 3,
+    "name": "???",
+    "ref_val": 0,
+    "enum_val": 3,
+    "icon": "0",
+    "prefab": "Prefabs/Empty",
+    "sound": "0"
+  }
+]

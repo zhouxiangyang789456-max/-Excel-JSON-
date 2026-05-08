@@ -29,6 +29,12 @@ namespace ExcelToJsonPlugin.Editor.Validator
             new FormulaDetectionRule(),
         };
 
+        private static readonly List<IStage3Rule> Stage3Rules = new List<IStage3Rule>
+        {
+            new RefIntegrityRule(),
+            new EnumExistenceRule(),
+        };
+
         /// <summary>
         /// Standalone validation that includes TypeMatch rule (for validate-only flows
         /// that don't go through DataParser).
@@ -53,6 +59,20 @@ namespace ExcelToJsonPlugin.Editor.Validator
             string fileName,
             List<RuleConfig> customRules = null)
         {
+            return ValidateWithRefs(rows, schema, fileName, null, customRules);
+        }
+
+        /// <summary>
+        /// 完全校验：结构 + 数据 + 跨表引用。
+        /// referencedIds 用于 Stage 3 跨表引用校验。
+        /// </summary>
+        public static ValidationReport ValidateWithRefs(
+            List<List<string>> rows,
+            TableSchema schema,
+            string fileName,
+            Dictionary<string, HashSet<int>> referencedIds,
+            List<RuleConfig> customRules = null)
+        {
             var report = new ValidationReport();
 
             if (rows == null || rows.Count == 0)
@@ -68,8 +88,8 @@ namespace ExcelToJsonPlugin.Editor.Validator
             // Stage 2: Data
             RunStage2(rows, schema, fileName, report, customRules);
 
-            // Stage 3: References (Sprint 3)
-            RunStage3(rows, schema, fileName, report);
+            // Stage 3: References (cross-file)
+            RunStage3(rows, schema, fileName, report, referencedIds);
 
             return report;
         }
@@ -109,12 +129,18 @@ namespace ExcelToJsonPlugin.Editor.Validator
 
         private static void RunStage3(
             List<List<string>> rows, TableSchema schema,
-            string fileName, ValidationReport report)
+            string fileName, ValidationReport report,
+            Dictionary<string, HashSet<int>> referencedIds)
         {
-            // Sprint 3: Cross-file reference integrity check
-            // - ref:TableName → verify referenced ID exists in target table
-            // - enum:TableName → verify value is in named enum Sheet
-            // - Cycle detection in reference chains
+            // Ensure we have an empty dict to avoid null checks in rules
+            var refs = referencedIds ?? new Dictionary<string, HashSet<int>>();
+
+            foreach (var rule in Stage3Rules)
+            {
+                var errors = rule.Validate(rows, schema, fileName, refs);
+                foreach (var err in errors)
+                    report.Errors.Add(err);
+            }
         }
 
         /// <summary>

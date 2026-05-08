@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a2b7c0236e985948b179ed8ea966ea1, type: 3}
+  m_Name: Missing
+  m_EditorClassIdentifier: 
+  rows:
+  - id: 1
+    tags:
+    - "\u6B66\u5668"
+    - "\u8FD1\u6218"
+    drops:
+    - Iron
+    - Wood
+    config: '{"rarity":1,"bind":true}'
+    loc_key: ITEM_SWORD_001
+  - id: 2
+    tags:
+    - "\u9632\u5177"
+    - "\u5934\u76D4"
+    drops:
+    - Steel
+    config: '{"rarity":3,"set":"Dragon"}'
+    loc_key: ITEM_HELM_DRAGON
+  - id: 3
+    tags:
+    - "\u6D88\u8017\u54C1"
+    drops: []
+    config: '{}'
+    loc_key: ITEM_POTION_HP
+  - id: 4
+    tags:
+    - 0
+    drops:
+    - 0
+    config: 
+    loc_key: ITEM_DEFAULT
+  - id: 5
+    tags:
+    - "\u4EFB\u52A1"
+    drops:
+    - Gold
+    - Gem
+    - Scroll
+    config: '{"require":{"lv":50},"reward":{"exp":1000}}'
+    loc_key: QUEST_MAIN_001

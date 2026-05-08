@@ -50,7 +50,7 @@ namespace ExcelToJsonPlugin.Editor.Validator.Rules
                     if (!ShouldApply(row, config, condField, condFieldIdx))
                         continue;
 
-                    var error = ApplyRule(rawValue, field, config, fileName, sheetName, ri + 1);
+                    var error = ApplyRule(rawValue, field, config, fileName, schema.TableName, ri + 1);
                     if (error != null)
                         errors.Add(error);
                 }
@@ -140,7 +140,7 @@ namespace ExcelToJsonPlugin.Editor.Validator.Rules
                                     msg ?? $"Value does not match pattern \"{config.Params}\".");
                             }
                         }
-                        catch (RegexParseException)
+                        catch (System.ArgumentException)
                         {
                             // Invalid regex — skip
                         }

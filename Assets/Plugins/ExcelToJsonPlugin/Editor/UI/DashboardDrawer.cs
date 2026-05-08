@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using ExcelToJsonPlugin.Editor.Core;
 using UnityEditor;
 using UnityEngine;
 
@@ -17,35 +18,33 @@ namespace ExcelToJsonPlugin.Editor.UI
         {
             scroll = EditorGUILayout.BeginScrollView(scroll);
 
-            EditorGUILayout.LabelField("Project Overview", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(Loc.Tr("dashboard_title"), EditorStyles.boldLabel);
             EditorGUILayout.Space(5);
 
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Excel Directory:", GUILayout.Width(100));
+            EditorGUILayout.LabelField(Loc.Tr("excel_dir_label"), GUILayout.Width(100));
             EditorGUILayout.LabelField(window.ExcelDir);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Output Directory:", GUILayout.Width(100));
+            EditorGUILayout.LabelField(Loc.Tr("output_dir_label"), GUILayout.Width(100));
             EditorGUILayout.LabelField(window.OutputDir);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space(15);
-            EditorGUILayout.LabelField("Quick Status", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(Loc.Tr("quick_status"), EditorStyles.boldLabel);
 
             if (window.FileEntries.Count == 0)
             {
-                EditorGUILayout.HelpBox(
-                    "No Excel files found. Place .xlsx files in Assets/Excel/ or click '+ Add Excel Directory'.",
-                    MessageType.Info);
+                EditorGUILayout.HelpBox(Loc.Tr("no_excel_files"), MessageType.Info);
             }
             else
             {
                 // Summary table
                 EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
-                EditorGUILayout.LabelField("File", EditorStyles.miniBoldLabel, GUILayout.Width(180));
-                EditorGUILayout.LabelField("Sheets", EditorStyles.miniBoldLabel, GUILayout.Width(60));
-                EditorGUILayout.LabelField("Status", EditorStyles.miniBoldLabel);
+                EditorGUILayout.LabelField(Loc.Tr("file_col"), EditorStyles.miniBoldLabel, GUILayout.Width(180));
+                EditorGUILayout.LabelField(Loc.Tr("sheets_col"), EditorStyles.miniBoldLabel, GUILayout.Width(60));
+                EditorGUILayout.LabelField(Loc.Tr("status_col"), EditorStyles.miniBoldLabel);
                 EditorGUILayout.EndHorizontal();
 
                 foreach (var entry in window.FileEntries)
@@ -67,14 +66,14 @@ namespace ExcelToJsonPlugin.Editor.UI
                         }
                     }
 
-                    var status = hasOutput ? "✅ Exported" : "⚪ Not exported";
+                    var status = hasOutput ? Loc.Tr("status_exported") : Loc.Tr("status_not_exported");
                     EditorGUILayout.LabelField(status);
 
                     // Quick actions
-                    if (GUILayout.Button("Export", EditorStyles.miniButton, GUILayout.Width(50)))
+                    if (GUILayout.Button(Loc.Tr("export_all"), EditorStyles.miniButton, GUILayout.Width(50)))
                         window.RunExportSingle(entry.RelativePath, null);
 
-                    if (GUILayout.Button("Open", EditorStyles.miniButton, GUILayout.Width(45)))
+                    if (GUILayout.Button(Loc.Tr("open_excel"), EditorStyles.miniButton, GUILayout.Width(45)))
                         window.OpenExcel(entry.FullPath);
 
                     EditorGUILayout.EndHorizontal();
@@ -84,20 +83,20 @@ namespace ExcelToJsonPlugin.Editor.UI
             EditorGUILayout.Space(15);
 
             // Quick actions
-            EditorGUILayout.LabelField("Quick Actions", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(Loc.Tr("quick_actions"), EditorStyles.boldLabel);
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Export All", GUILayout.Height(35)))
+            if (GUILayout.Button(Loc.Tr("export_all_btn"), GUILayout.Height(35)))
                 window.RunExportAll();
-            if (GUILayout.Button("Validate All", GUILayout.Height(35)))
+            if (GUILayout.Button(Loc.Tr("validate_all_btn"), GUILayout.Height(35)))
                 window.RunValidate();
-            if (GUILayout.Button("Refresh Files", GUILayout.Height(35)))
+            if (GUILayout.Button(Loc.Tr("refresh_files_btn"), GUILayout.Height(35)))
                 window.RefreshFileList();
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space(15);
 
             // Generated output
-            EditorGUILayout.LabelField("Generated Output", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(Loc.Tr("generated_output"), EditorStyles.boldLabel);
             var dataDir = "Assets/Data";
             if (Directory.Exists(dataDir))
             {
@@ -106,10 +105,10 @@ namespace ExcelToJsonPlugin.Editor.UI
                     .OrderBy(f => f).ToList();
 
                 if (files.Count == 0)
-                    EditorGUILayout.LabelField("(No generated files yet)", EditorStyles.miniLabel);
+                    EditorGUILayout.LabelField(Loc.Tr("no_generated_files"), EditorStyles.miniLabel);
                 else
                 {
-                    EditorGUILayout.LabelField($"  {files.Count} generated files:");
+                    EditorGUILayout.LabelField($"  {files.Count} {Loc.Tr("gen_files_title")}:");
                     foreach (var f in files)
                         EditorGUILayout.LabelField($"    {Path.GetFileName(f)}");
                 }
