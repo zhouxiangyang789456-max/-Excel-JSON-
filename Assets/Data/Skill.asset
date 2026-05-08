@@ -15,13 +15,37 @@ MonoBehaviour:
   rows:
   - id: 1
     name: "\u91CD\u51FB"
+    type: "\u7269\u7406"
+    power: 150
+    cost: 30
+    desc: "\u96C6\u4E2D\u529B\u91CF\u8FDB\u884C\u4E00\u6B21\u5F3A\u529B\u653B\u51FB"
   - id: 2
     name: "\u706B\u7403\u672F"
+    type: "\u9B54\u6CD5"
+    power: 200
+    cost: 50
+    desc: "\u53D1\u5C04\u4E00\u9897\u707C\u70ED\u7684\u706B\u7403"
   - id: 3
     name: "\u65CB\u98CE\u65A9"
+    type: "\u7269\u7406"
+    power: 120
+    cost: 25
+    desc: "\u65CB\u8F6C\u653B\u51FB\u5468\u56F4\u6240\u6709\u654C\u4EBA"
   - id: 4
     name: "\u6CBB\u7597\u672F"
+    type: "\u8F85\u52A9"
+    power: 0
+    cost: 40
+    desc: "\u6062\u590D\u76EE\u6807\u751F\u547D\u503C"
   - id: 5
     name: "\u51B0\u51BB\u7BAD"
+    type: "\u9B54\u6CD5"
+    power: 180
+    cost: 45
+    desc: "\u5C04\u51FA\u5BD2\u51B0\u7BAD\u77E2\u51CF\u901F\u654C\u4EBA"
   - id: 6
     name: "\u95EA\u907F"
+    type: "\u8F85\u52A9"
+    power: 0
+    cost: 20
+    desc: "\u77ED\u65F6\u95F4\u5185\u63D0\u9AD8\u95EA\u907F\u7387"

@@ -36,6 +36,12 @@ namespace ExcelToJsonPlugin.Editor.UI
         private Vector2 treeScroll, tabScroll;
         private string searchFilter = "";
 
+        // ===== 数据缓存 —— 避免每帧重新读取 Excel 文件 =====
+        private readonly Dictionary<string, ExcelReader.ReadResult> _readResultCache = new Dictionary<string, ExcelReader.ReadResult>();
+        private readonly Dictionary<string, DateTime> _readResultMtime = new Dictionary<string, DateTime>(); // 文件修改时间
+        private readonly Dictionary<string, TableSchema> _schemaCache = new Dictionary<string, TableSchema>();
+        private Dictionary<string, Type> _cachedSheetTypeMap; // ScanTableSheetMap 缓存
+
         // Tab 内容
         private DataPreviewDrawer previewDrawer;
         private ValidationDrawer validationDrawer;
@@ -46,6 +52,7 @@ namespace ExcelToJsonPlugin.Editor.UI
         // File watcher (static to persist between window open/close)
         private static ExcelFileWatcher fileWatcher;
         private DateTime? lastExportTime;
+        private bool isExporting;
 
         // ===== 入口 =====
         [MenuItem("Window/Excel Data Manager", priority = 100)]
@@ -88,6 +95,7 @@ namespace ExcelToJsonPlugin.Editor.UI
         // ===== 刷新文件列表 =====
         public void RefreshFileList()
         {
+            InvalidateCache();
             fileEntries.Clear();
             if (!Directory.Exists(excelDir))
             {
@@ -126,6 +134,14 @@ namespace ExcelToJsonPlugin.Editor.UI
             }
 
             Repaint();
+        }
+
+        private void InvalidateCache()
+        {
+            _readResultCache.Clear();
+            _readResultMtime.Clear();
+            _schemaCache.Clear();
+            _cachedSheetTypeMap = null;
         }
 
         // ===== 绘制 =====
@@ -183,6 +199,12 @@ namespace ExcelToJsonPlugin.Editor.UI
                 var count = paths?.Count ?? 0;
                 SetStatus(Loc.Tr("template_generated", count));
                 RefreshFileList();
+            }
+
+            if (isExporting && GUILayout.Button("取消导出", EditorStyles.toolbarButton, GUILayout.Width(70)))
+            {
+                Core.Pipeline.CancelRequested = true;
+                SetStatus("正在取消...");
             }
 
             GUILayout.Space(5);
@@ -442,9 +464,11 @@ namespace ExcelToJsonPlugin.Editor.UI
             if (mode == 1) // Mode A forced
                 return $"{CodeGenerator.ToPascalCaseStatic(sheetName)}Row (auto-generated)";
 
-            // Check if [ExcelTable] class exists
-            var sheetMap = Mapping.AttributeMapping.ScanTableSheetMap();
-            if (sheetMap.TryGetValue(sheetName, out var mappedType))
+            // 缓存反射扫描结果，避免每帧遍历所有程序集
+            if (_cachedSheetTypeMap == null)
+                _cachedSheetTypeMap = Mapping.AttributeMapping.ScanTableSheetMap();
+
+            if (_cachedSheetTypeMap.TryGetValue(sheetName, out var mappedType))
                 return $"{mappedType.Name} (C# class)";
 
             if (mode == 2) // Mode B forced but no class found
@@ -521,6 +545,8 @@ namespace ExcelToJsonPlugin.Editor.UI
 
         public void RunExportAll()
         {
+            Core.Pipeline.CancelRequested = false;
+            isExporting = true;
             var options = PipelineOptions();
 
             try
@@ -530,6 +556,8 @@ namespace ExcelToJsonPlugin.Editor.UI
                 var result = Pipeline.ProcessDirectory(excelDir, options,
                     (current, total, fileName) =>
                     {
+                        if (Core.Pipeline.CancelRequested)
+                            EditorUtility.ClearProgressBar();
                         var pct = (float)current / total;
                         EditorUtility.DisplayProgressBar(
                             "Excel To JSON — Exporting",
@@ -563,11 +591,14 @@ namespace ExcelToJsonPlugin.Editor.UI
             finally
             {
                 EditorUtility.ClearProgressBar();
+                isExporting = false;
+                Repaint();
             }
         }
 
         public void RunValidate()
         {
+            Core.Pipeline.CancelRequested = false;
             var options = PipelineOptions();
             options.BlockOnValidationError = false; // 校验模式不阻止导出
 
@@ -598,6 +629,8 @@ namespace ExcelToJsonPlugin.Editor.UI
             finally
             {
                 EditorUtility.ClearProgressBar();
+                isExporting = false;
+                Repaint();
             }
         }
 
@@ -666,6 +699,8 @@ namespace ExcelToJsonPlugin.Editor.UI
             finally
             {
                 EditorUtility.ClearProgressBar();
+                isExporting = false;
+                Repaint();
             }
         }
 
@@ -709,6 +744,8 @@ namespace ExcelToJsonPlugin.Editor.UI
             finally
             {
                 EditorUtility.ClearProgressBar();
+                isExporting = false;
+                Repaint();
             }
         }
 
@@ -786,23 +823,61 @@ namespace ExcelToJsonPlugin.Editor.UI
             try
             {
                 var fullPath = Path.Combine(excelDir, relPath);
-                var read = ExcelReader.Read(fullPath);
-                if (read.Sheets.TryGetValue(sheetName, out var rows))
+                var lastWrite = File.GetLastWriteTimeUtc(fullPath);
+                // 如果文件在缓存后被修改过，清除此文件的缓存
+                if (_readResultCache.TryGetValue(fullPath, out var readResult))
+                {
+                    if (_readResultMtime.TryGetValue(fullPath, out var cachedMtime) && cachedMtime >= lastWrite)
+                        return readResult.Sheets.TryGetValue(sheetName, out var r) ? r : null;
+                    // 文件已更新，清除缓存
+                    _readResultCache.Remove(fullPath);
+                    _readResultMtime.Remove(fullPath);
+                    CleanSchemaCacheForFile(fullPath);
+                }
+                // 重新读取
+                readResult = ExcelReader.Read(fullPath);
+                _readResultCache[fullPath] = readResult;
+                _readResultMtime[fullPath] = lastWrite;
+                if (readResult.Sheets.TryGetValue(sheetName, out var rows))
                     return rows;
             }
             catch { }
             return null;
         }
 
+        private void CleanSchemaCacheForFile(string fullPath)
+        {
+            var prefix = fullPath + "|";
+            var keys = new List<string>();
+            foreach (var k in _schemaCache.Keys)
+                if (k.StartsWith(prefix)) keys.Add(k);
+            foreach (var k in keys)
+                _schemaCache.Remove(k);
+        }
+
         public TableSchema GetSchema(string relPath, string sheetName)
         {
-            var rows = GetSheetData(relPath, sheetName);
-            if (rows == null) return null;
+            if (string.IsNullOrEmpty(relPath) || string.IsNullOrEmpty(sheetName)) return null;
+            var fullPath = Path.Combine(excelDir, relPath);
+            var cacheKey = fullPath + "|" + sheetName;
+            // Schema 缓存
+            if (_schemaCache.TryGetValue(cacheKey, out var cached))
+                return cached;
             try
             {
-                return SchemaParser.Parse(rows, sheetName,
+                // 直接从缓存获取 ReadResult，避免重复读文件
+                if (!_readResultCache.TryGetValue(fullPath, out var readResult))
+                {
+                    readResult = ExcelReader.Read(fullPath);
+                    _readResultCache[fullPath] = readResult;
+                }
+                if (!readResult.Sheets.TryGetValue(sheetName, out var rows))
+                    return null;
+                var schema = SchemaParser.Parse(rows, sheetName,
                     Path.GetFileName(relPath ?? ""), 1, 2, 3, 4,
                     new[] { "_", "#" });
+                _schemaCache[cacheKey] = schema;
+                return schema;
             }
             catch { return null; }
         }

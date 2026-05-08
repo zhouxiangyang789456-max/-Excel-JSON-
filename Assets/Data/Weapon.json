@@ -1,6 +1,72 @@
 ﻿[
   {
-    "id": 1,
-    "name": "??A"
+    "id": 1001,
+    "name": "新手剑",
+    "attack": 12,
+    "defense": 0,
+    "price": 100,
+    "rare": 1,
+    "element": "火",
+    "desc": "一把普通的铁剑"
+  },
+  {
+    "id": 1002,
+    "name": "铁剑",
+    "attack": 25,
+    "defense": 5,
+    "price": 300,
+    "rare": 2,
+    "element": "无",
+    "desc": "经过锻造的坚固铁剑"
+  },
+  {
+    "id": 1003,
+    "name": "魔导杖",
+    "attack": 8,
+    "defense": 2,
+    "price": 500,
+    "rare": 2,
+    "element": "冰",
+    "desc": "可以释放寒冰法术的魔杖"
+  },
+  {
+    "id": 1004,
+    "name": "龙牙匕首",
+    "attack": 35,
+    "defense": 0,
+    "price": 800,
+    "rare": 3,
+    "element": "火",
+    "desc": "用龙牙打造，锋利无比"
+  },
+  {
+    "id": 1005,
+    "name": "圣光剑",
+    "attack": 45,
+    "defense": 10,
+    "price": 1500,
+    "rare": 4,
+    "element": "光",
+    "desc": "传说中圣骑士的佩剑"
+  },
+  {
+    "id": 1006,
+    "name": "暗影弓",
+    "attack": 30,
+    "defense": 0,
+    "price": 1200,
+    "rare": 3,
+    "element": "暗",
+    "desc": "暗影精灵的弓箭"
+  },
+  {
+    "id": 1007,
+    "name": "雷霆锤",
+    "attack": 55,
+    "defense": 15,
+    "price": 2000,
+    "rare": 5,
+    "element": "雷",
+    "desc": "雷电之神的战锤"
   }
 ]

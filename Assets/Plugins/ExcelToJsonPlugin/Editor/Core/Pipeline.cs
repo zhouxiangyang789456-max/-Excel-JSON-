@@ -19,6 +19,9 @@ namespace ExcelToJsonPlugin.Editor.Core
     /// </summary>
     public class Pipeline
     {
+        /// <summary>Set to true to cancel the current export operation.</summary>
+        public static volatile bool CancelRequested;
+
         /// <summary>
         /// 流水线配置（每次运行时的参数）。
         /// </summary>
@@ -90,6 +93,7 @@ namespace ExcelToJsonPlugin.Editor.Core
 
         public static Result ProcessFile(string excelPath, Options options)
         {
+            CancelRequested = false;
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var result = new Result();
 
@@ -132,6 +136,9 @@ namespace ExcelToJsonPlugin.Editor.Core
 
                 // --- Mode B detection: scan all [ExcelTable] types ---
                 var sheetTypeMap = Mapping.AttributeMapping.ScanTableSheetMap();
+
+                // Schema migration: remember user choice across sheets
+                int schemaSnapChoice = 0; // 0=未选择, 1=全部继续, 2=全部跳过
 
                 // --- Incremental export: load hash cache ---
                 Dictionary<string, string> hashCache = null;
@@ -222,40 +229,58 @@ namespace ExcelToJsonPlugin.Editor.Core
                     // 跳过被标记的 Sheet
                     if (schema == null) continue;
 
-                    // --- Schema 迁移检测 ---
-                    var snapshot = SchemaSnapshot.Load(schema.TableName, options.ExcelDir);
-                    if (snapshot != null)
+                    // --- Schema 迁移检测（只弹一次，记住选择） ---
+                    if (schemaSnapChoice == 0) // 0=未选择, 1=全部继续, 2=全部跳过
                     {
-                        var changes = SchemaDiffer.Diff(schema, snapshot);
-                        if (changes.Count > 0)
+                        var snapshot = SchemaSnapshot.Load(schema.TableName, options.ExcelDir);
+                        if (snapshot != null)
                         {
-                            var summary = SchemaDiffer.BuildSummary(changes, schema.TableName);
-                            Debug.Log($"[ExcelToJSON] {summary}");
-
-                            if (SchemaDiffer.HasDangerousChanges(changes))
+                            var changes = SchemaDiffer.Diff(schema, snapshot);
+                            if (changes.Count > 0 && SchemaDiffer.HasDangerousChanges(changes))
                             {
-                                var safeChanges = changes.Where(c => !c.IsDangerous).ToList();
-                                if (safeChanges.Count > 0)
-                                {
-                                    Debug.Log($"[ExcelToJSON] {schema.TableName}: {safeChanges.Count} 安全变更自动处理");
-                                    // Safe changes (added, reordered) → auto-migrate
-                                }
+                                var summary = SchemaDiffer.BuildSummary(changes, schema.TableName);
+                                Debug.Log($"[ExcelToJSON] {summary}");
 
-                                if (!UnityEditor.EditorUtility.DisplayDialog(
+                                var choice = UnityEditor.EditorUtility.DisplayDialogComplex(
                                     $"Schema 变更: {schema.TableName}",
-                                    $"检测到危险变更，继续导出可能导致编译错误:\n\n{summary}\n\n建议手动处理后重新导出。",
-                                    "继续导出", "跳过此表"))
+                                    $"检测到危险变更:\n{summary}\n\n如何继续？",
+                                    "全部继续（不再提醒）",
+                                    "跳过此表",
+                                    "取消导出");
+
+                                if (choice == 2) // 取消导出
                                 {
-                                    Debug.LogWarning($"[ExcelToJSON] {schema.TableName}: 用户取消导出（Schema 变更）");
+                                    CancelRequested = true;
+                                    Debug.LogWarning("[ExcelToJSON] 用户取消导出");
+                                    break;
+                                }
+                                else if (choice == 1) // 跳过此表
+                                {
                                     result.ValidationReport.Add(
                                         readResult.FileName, schema.TableName, 0, "", "",
                                         "SchemaMigration",
-                                        $"Schema 变更需确认: {changes.Count(c => c.IsDangerous)} 处危险变更",
+                                        $"Schema 变更被跳过: {changes.Count(c => c.IsDangerous)} 处危险变更",
                                         ErrorLevel.Warning);
                                     continue;
                                 }
+                                else // 全部继续
+                                {
+                                    schemaSnapChoice = 1;
+                                    Debug.Log($"[ExcelToJSON] {schema.TableName}: 用户选择继续导出，后续不再提醒");
+                                }
                             }
                         }
+                    }
+                    else if (schemaSnapChoice == 2)
+                    {
+                        continue; // Skip remaining sheets
+                    }
+
+                    // --- Cancel check ---
+                    if (CancelRequested)
+                    {
+                        Debug.LogWarning("[ExcelToJSON] 导出被取消");
+                        break;
                     }
 
                     // 解析数据
@@ -414,6 +439,7 @@ namespace ExcelToJsonPlugin.Editor.Core
         public static Result ProcessDirectory(string directory, Options options,
             System.Action<int, int, string> onProgress = null)
         {
+            CancelRequested = false;
             var result = new Result();
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
@@ -433,6 +459,12 @@ namespace ExcelToJsonPlugin.Editor.Core
 
             for (int i = 0; i < excelFiles.Length; i++)
             {
+                if (CancelRequested)
+                {
+                    Debug.LogWarning("[ExcelToJSON] 批量导出被取消");
+                    break;
+                }
+
                 var file = excelFiles[i];
                 var relativePath = GetRelativePath(file, options.ExcelDir);
                 var fileName = Path.GetFileName(file);
