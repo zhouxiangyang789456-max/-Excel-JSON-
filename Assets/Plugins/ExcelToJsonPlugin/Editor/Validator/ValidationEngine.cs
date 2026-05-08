@@ -1,76 +1,141 @@
 using System.Collections.Generic;
+using System.Linq;
+using ExcelToJsonPlugin.Editor.Core;
 using ExcelToJsonPlugin.Editor.Core.Models;
+using ExcelToJsonPlugin.Editor.Validator.Rules;
 
 namespace ExcelToJsonPlugin.Editor.Validator
 {
-    /// <summary>
-    /// 校验引擎调度器。Sprint 2 实现完整功能。
-    /// </summary>
-    public static class ValidationEngine
+    public class ValidationEngine
     {
+        private static readonly List<IStructureRule> StructureRules = new List<IStructureRule>
+        {
+            new FieldNameUniqueRule(),
+            new TypeValidityRule(),
+            new HeaderCompletenessRule(),
+            new FieldNameSanityRule(),
+        };
+
+        private static readonly List<IDataRule> DataRules = new List<IDataRule>
+        {
+            // Note: TypeMatch is handled by DataParser during export,
+            // so it's excluded here to avoid double-reporting.
+            // Use ValidateAll() for standalone use that includes TypeMatch.
+            new IdRequiredRule(),
+            new IdUniqueRule(),
+            new RequiredFieldRule(),
+            new EnumSanityRule(),
+            new ResPathRule(),
+            new FormulaDetectionRule(),
+        };
+
         /// <summary>
-        /// 执行三阶段校验。
+        /// Standalone validation that includes TypeMatch rule (for validate-only flows
+        /// that don't go through DataParser).
         /// </summary>
-        public static ValidationReport Validate(
+        public static ValidationReport ValidateAll(
             List<List<string>> rows,
             TableSchema schema,
-            string excelFileName)
+            string fileName)
         {
-            var report = new ValidationReport();
+            var report = Validate(rows, schema, fileName);
 
-            // Stage 1: 结构校验
-            ValidateStructure(schema, excelFileName, report);
-
-            // Stage 2: 数据校验（Sprint 2 实现）
-            // ValidateData(rows, schema, excelFileName, report);
-
-            // Stage 3: 引用校验（Sprint 3 实现）
-            // ValidateReferences(rows, schema, excelFileName, report);
+            var typeErrors = new TypeMatchRule().Validate(rows, schema, fileName);
+            foreach (var err in typeErrors)
+                report.Errors.Add(err);
 
             return report;
         }
 
-        private static void ValidateStructure(
+        public static ValidationReport Validate(
+            List<List<string>> rows,
             TableSchema schema,
             string fileName,
-            ValidationReport report)
+            List<RuleConfig> customRules = null)
         {
-            // 字段名唯一性
-            var seen = new HashSet<string>();
-            foreach (var field in schema.Fields)
+            var report = new ValidationReport();
+
+            if (rows == null || rows.Count == 0)
             {
-                if (!string.IsNullOrEmpty(field.Name) && !seen.Add(field.Name))
-                {
-                    report.Add(fileName, schema.TableName, 1, field.Name,
-                        field.Name, "FieldNameUnique",
-                        $"字段名重复: \"{field.Name}\"", ErrorLevel.Error);
-                }
+                report.Add(fileName, schema?.TableName ?? "", 0, "", "",
+                    "EmptySheet", "Sheet has no rows.", ErrorLevel.Error);
+                return report;
             }
 
-            // 不支持的类开警告
-            var supportedTypes = new HashSet<string>
-            {
-                "int", "float", "string", "bool", "int[]", "float[]",
-                "string[]", "Vector2", "Vector3", "Color", "json", "loc"
-            };
+            // Stage 1: Structure
+            RunStage1(schema, fileName, report);
 
+            // Stage 2: Data
+            RunStage2(rows, schema, fileName, report, customRules);
+
+            // Stage 3: References (Sprint 3)
+            RunStage3(rows, schema, fileName, report);
+
+            return report;
+        }
+
+        private static void RunStage1(TableSchema schema, string fileName, ValidationReport report)
+        {
+            foreach (var rule in StructureRules)
+            {
+                var errors = rule.Validate(schema, fileName);
+                foreach (var err in errors)
+                    report.Errors.Add(err);
+            }
+        }
+
+        private static void RunStage2(
+            List<List<string>> rows, TableSchema schema,
+            string fileName, ValidationReport report,
+            List<RuleConfig> customRules = null)
+        {
+            // Built-in data rules
+            foreach (var rule in DataRules)
+            {
+                var errors = rule.Validate(rows, schema, fileName);
+                foreach (var err in errors)
+                    report.Errors.Add(err);
+            }
+
+            // Custom rules from #Rules sheet
+            if (customRules != null && customRules.Count > 0)
+            {
+                var customRule = new CustomDataRule(customRules);
+                var customErrors = customRule.Validate(rows, schema, fileName);
+                foreach (var err in customErrors)
+                    report.Errors.Add(err);
+            }
+        }
+
+        private static void RunStage3(
+            List<List<string>> rows, TableSchema schema,
+            string fileName, ValidationReport report)
+        {
+            // Sprint 3: Cross-file reference integrity check
+            // - ref:TableName → verify referenced ID exists in target table
+            // - enum:TableName → verify value is in named enum Sheet
+            // - Cycle detection in reference chains
+        }
+
+        /// <summary>
+        /// Collect all unique sheet names referenced via ref:Type and enum:Type
+        /// (used by Sprint 3 for preloading dependent tables).
+        /// </summary>
+        public static HashSet<string> GetReferencedTableNames(TableSchema schema)
+        {
+            var names = new HashSet<string>();
             foreach (var field in schema.Fields)
             {
-                var normalized = field.NormalizedType;
-                if (normalized == null) continue;
-
-                bool isComposite = normalized.StartsWith("ref:")
-                    || normalized.StartsWith("enum:")
-                    || normalized.StartsWith("res");
-
-                if (!isComposite && !supportedTypes.Contains(normalized))
+                if (field.IsCompositeType && !string.IsNullOrEmpty(field.CompositeParam))
                 {
-                    report.Add(fileName, schema.TableName, 2, field.Name,
-                        field.RawType, "TypeRecognized",
-                        $"类型 \"{field.RawType}\" 不在支持列表中，将按 string 处理",
-                        ErrorLevel.Warning);
+                    if (field.NormalizedType?.StartsWith("ref:") == true ||
+                        field.NormalizedType?.StartsWith("enum:") == true)
+                    {
+                        names.Add(field.CompositeParam);
+                    }
                 }
             }
+            return names;
         }
     }
 }

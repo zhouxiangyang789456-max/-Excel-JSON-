@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using ExcelToJsonPlugin.Editor.Core.Models;
 using ExcelToJsonPlugin.Editor.Generator;
+using ExcelToJsonPlugin.Editor.Validator;
 using UnityEditor;
 using UnityEngine;
 
@@ -100,10 +101,30 @@ namespace ExcelToJsonPlugin.Editor.Core
 
                 result.FilesProcessed = 1;
 
+                // 先解析 #Rules 表（如果存在）
+                var customRules = new List<Validator.Rules.RuleConfig>();
+                foreach (var sheetName in readResult.SheetNames)
+                {
+                    if (sheetName.StartsWith("#Rules") || sheetName.Equals("Rules", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (readResult.Sheets.TryGetValue(sheetName, out var rulesRows))
+                        {
+                            var parsed = Validator.Rules.RulesSheetParser.Parse(rulesRows, sheetName);
+                            customRules.AddRange(parsed);
+                            if (parsed.Count > 0)
+                                Debug.Log($"[ExcelToJSON] 从 {sheetName} 加载了 {parsed.Count} 条自定义校验规则");
+                        }
+                    }
+                }
+
                 foreach (var sheetName in readResult.SheetNames)
                 {
                     // 跳过隐藏 Sheet
                     if (readResult.SheetHidden.TryGetValue(sheetName, out var hidden) && hidden)
+                        continue;
+
+                    // 跳过 #Rules Sheet 本身
+                    if (sheetName.StartsWith("#Rules") || sheetName.StartsWith("#"))
                         continue;
 
                     var rows = readResult.Sheets[sheetName];
@@ -139,10 +160,12 @@ namespace ExcelToJsonPlugin.Editor.Core
                     foreach (var err in errors)
                         result.ValidationReport.Errors.Add(err);
 
-                    // 基本校验（类型匹配已在 DataParser 中做）
+                    // 校验（含自定义规则）
                     if (options.EnableValidation)
                     {
-                        // TODO Sprint 2: 完整校验引擎
+                        var validationReport = ValidationEngine.Validate(rows, schema, readResult.FileName, customRules);
+                        foreach (var err in validationReport.Errors)
+                            result.ValidationReport.Errors.Add(err);
                     }
 
                     // 是否阻止导出
@@ -199,7 +222,8 @@ namespace ExcelToJsonPlugin.Editor.Core
         // 批量处理
         // ============================================================
 
-        public static Result ProcessDirectory(string directory, Options options)
+        public static Result ProcessDirectory(string directory, Options options,
+            System.Action<int, int, string> onProgress = null)
         {
             var result = new Result();
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -216,9 +240,14 @@ namespace ExcelToJsonPlugin.Editor.Core
                 .Where(f => !Path.GetFileName(f).StartsWith("~$")) // 跳过 Excel 临时文件
                 .ToArray();
 
-            foreach (var file in excelFiles)
+            for (int i = 0; i < excelFiles.Length; i++)
             {
+                var file = excelFiles[i];
                 var relativePath = GetRelativePath(file, options.ExcelDir);
+                var fileName = Path.GetFileName(file);
+
+                onProgress?.Invoke(i + 1, excelFiles.Length, fileName);
+
                 var fileResult = ProcessFile(file, options);
 
                 result.FilesProcessed += fileResult.FilesProcessed;

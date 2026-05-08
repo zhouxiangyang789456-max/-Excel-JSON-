@@ -1,5 +1,8 @@
+using System.Linq;
 using ExcelToJsonPlugin.Editor.Core;
+using ExcelToJsonPlugin.Editor.Core.Models;
 using ExcelToJsonPlugin.Editor.Generator;
+using ExcelToJsonPlugin.Editor.Validator;
 using UnityEditor;
 using UnityEngine;
 
@@ -75,8 +78,72 @@ namespace ExcelToJsonPlugin.Editor
         [MenuItem(MenuRoot + "Validate Only", priority = 101)]
         public static void ValidateOnly()
         {
-            // TODO Sprint 2: 仅校验不导出的完整实现
-            Debug.Log("[ExcelToJSON] 校验功能将在 Sprint 2 完善");
+            var options = new Pipeline.Options
+            {
+                ExcelDir = "Assets/Excel",
+                EnableValidation = true,
+                BlockOnValidationError = false,
+            };
+
+            // Scan and validate all Excel files
+            var excelDir = options.ExcelDir;
+            if (!System.IO.Directory.Exists(excelDir))
+            {
+                Debug.LogWarning($"[ExcelToJSON] Excel directory not found: {excelDir}");
+                return;
+            }
+
+            var files = System.IO.Directory.GetFiles(excelDir, "*.xlsx", System.IO.SearchOption.AllDirectories)
+                .Concat(System.IO.Directory.GetFiles(excelDir, "*.xls", System.IO.SearchOption.AllDirectories))
+                .Where(f => !System.IO.Path.GetFileName(f).StartsWith("~$"))
+                .ToArray();
+
+            var totalReport = new Editor.Core.Models.ValidationReport();
+
+            foreach (var file in files)
+            {
+                var readResult = Core.ExcelReader.Read(file);
+                foreach (var sheetName in readResult.SheetNames)
+                {
+                    if (!readResult.Sheets.TryGetValue(sheetName, out var rows)) continue;
+
+                    try
+                    {
+                        var schema = Core.SchemaParser.Parse(rows, sheetName, readResult.FileName,
+                            1, 2, 3, 4, new[] { "_", "#" });
+                        if (schema == null) continue;
+
+                        var report = Validator.ValidationEngine.ValidateAll(rows, schema, readResult.FileName);
+                        totalReport.Errors.AddRange(report.Errors);
+                    }
+                    catch (System.FormatException ex)
+                    {
+                        totalReport.Add(readResult.FileName, sheetName, 0, "", "",
+                            "SchemaError", ex.Message, ErrorLevel.Error);
+                    }
+                }
+            }
+
+            if (totalReport.Errors.Count == 0)
+            {
+                Debug.Log($"[ExcelToJSON] Validation passed: {files.Length} files OK");
+                if (!Application.isBatchMode)
+                    EditorUtility.DisplayDialog("Validation", $"All {files.Length} files passed.", "OK");
+            }
+            else
+            {
+                Debug.LogWarning($"[ExcelToJSON] Validation found {totalReport.ErrorCount} errors, {totalReport.WarningCount} warnings");
+                foreach (var err in totalReport.Errors)
+                {
+                    if (err.Level == ErrorLevel.Error)
+                        Debug.LogError(err.ToString());
+                    else if (err.Level == ErrorLevel.Warning)
+                        Debug.LogWarning(err.ToString());
+                }
+                if (!Application.isBatchMode)
+                    EditorUtility.DisplayDialog("Validation Failed",
+                        $"{totalReport.ErrorCount} errors, {totalReport.WarningCount} warnings\nSee Console for details.", "OK");
+            }
         }
 
         [MenuItem(MenuRoot + "Open Excel Directory", priority = 200)]

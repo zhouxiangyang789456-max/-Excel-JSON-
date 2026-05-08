@@ -2301,3 +2301,87 @@ NPOI 能读取公式字符串，但不能像 Excel 一样实时求值。如果�
 | 额外依赖 | 无 | **BouncyCastle.Crypto 1.8.9** — NPOI 硬依赖 |
 | API 兼容 | .NET Standard 2.1 | **.NET Framework** — 非此模式 NPOI DLL 加载失败 |
 | Pipeline | 单次 Pass | **两段式** — Code Gen 后需等 Unity 编译再 Asset Gen |
+
+---
+
+## 附录 E：Sprint 2 实测记录（2026-05-08）
+
+**产出：** 13 个新源文件 + 3 个修改文件，16 条校验规则，7 个 Editor Window UI 组件。
+
+### E.1 Editor Window 实现
+
+| 组件 | 技术选型 | 备注 |
+|------|----------|------|
+| 整体框架 | IMGUI（EditorGUILayout） | 非 UI Toolkit，兼容 Unity 2021.3 LTS |
+| 文件树 | 内联实现，支持 Ctrl/Shift 多选 | 未抽取独立 TreeView 组件 |
+| 数据预览 | 分页渲染（100行/页）+ EditorGUILayout 水平+垂直双滚动 | 虚拟滚动未实现，分页已缓解大表问题 |
+| 进度条 | `EditorUtility.DisplayProgressBar` | 按文件粒度更新 |
+| 设置持久化 | `EditorPrefs` | 简单可靠，无外部依赖 |
+
+### E.2 校验引擎架构
+
+```
+ValidationEngine.Validate(rows, schema, fileName, customRules)
+    │
+    ├── Stage 1: RunStructureRules()
+    │     └── FieldNameUnique → TypeValidity → HeaderCompleteness → FieldNameSanity
+    │
+    ├── Stage 2: RunDataRules()
+    │     ├── IdRequired → IdUnique → RequiredField → EnumSanity → ResPath → FormulaDetection
+    │     └── CustomDataRule(configs)  ← 从 #Rules Sheet 解析的 range/regex/multiple/not_empty/enum
+    │
+    └── Stage 3: RunReferenceRules()  ← 预留（Sprint 3）
+```
+
+**#Rules Sheet 格式：**
+
+| field | rule | params | condition | message |
+|-------|------|--------|-----------|---------|
+| attack | range | 0~9999 | | |
+| heal | not_empty | | type=2 | 治疗类物品必须填治疗量 |
+| price | multiple | 10 | | |
+| name | regex | `^[A-Z]` | | 必须以大写字母开头 |
+
+### E.3 文件清单（Sprint 2 新增/修改）
+
+**新增 UI（7 文件）：**
+```
+Assets/Plugins/ExcelToJsonPlugin/Editor/UI/
+├── ExcelDataWindow.cs       — 主窗口（文件树 + 5标签页 + 工具栏 + 状态栏）
+├── DashboardDrawer.cs       — Tab 0: 项目总览
+├── DataPreviewDrawer.cs     — Tab 1: 数据预览（分页 + 搜索）
+├── ValidationDrawer.cs      — Tab 2: 校验结果（过滤 + CSV 导出）
+├── ExportDrawer.cs          — Tab 3: 导出配置
+├── RuntimeDrawer.cs         — Tab 4: 运行时 API 参考 + 一键生成 DataManager
+└── SettingsWindow.cs        — 设置窗口（EditorPrefs 持久化）
+```
+
+**新增校验规则（6 文件）：**
+```
+Assets/Plugins/ExcelToJsonPlugin/Editor/Validator/Rules/
+├── IValidationRule.cs       — IStructureRule / IDataRule 接口
+├── StructureRules.cs        — 4 条 Stage 1 规则
+├── DataRules.cs             — 7 条 Stage 2 规则
+├── CustomDataRule.cs        — #Rules Sheet 动态规则执行器
+├── RulesSheetParser.cs      — #Rules Sheet 解析器
+└── RuleConfig.cs            — 规则配置模型
+```
+
+**修改（3 文件）：**
+```
+Assets/Plugins/ExcelToJsonPlugin/Editor/
+├── Validator/ValidationEngine.cs  — 重写为可插拔规则架构
+├── Core/Pipeline.cs               — 接入校验引擎 + #Rules 解析 + 进度回调
+└── ExcelToJsonMenu.cs             — ValidateOnly 完整实现
+```
+
+### E.4 开发中发现的决策变更
+
+| 决策 | 设计文档 v3 | Sprint 2 实测 |
+|------|------------|---------------|
+| UI 框架 | UI Toolkit 优先 | **IMGUI** — 2021.3 LTS 上 UI Toolkit ListView 虚拟化不完善 |
+| ExcelTreeView | 独立 TreeView 组件 | **内联文件列表** — 无需递归展开，独立组件是过度设计 |
+| 校验规则定义 | 内置在 ValidationEngine | **可插拔接口** + `#Rules` Sheet — 更灵活，策划可自定义 |
+| 设置存储 | ScriptableObject | **EditorPrefs** — 设置项简单，无需序列化资产 |
+| 进度条 | 自定义分帧进度 | **EditorUtility.DisplayProgressBar** — 开箱即用，代码量小 |
+| TypeMatch 执行位置 | 仅在 ValidationEngine | **DataParser 内置** + ValidationEngine 不含 TypeMatch — 避免导出时重复校验 |

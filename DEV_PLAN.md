@@ -2,7 +2,7 @@
 
 > 基于 DESIGN.md v3，拆分可执行的开发展望。每轮 Sprint 有明确的交付物和验收标准。
 >
-> **最后更新：2026-05-08** — Sprint 1 完成，带 7 组测试验证通过。
+> **最后更新：2026-05-08** — Sprint 2 完成，Editor Window + 校验引擎就绪。
 
 ---
 
@@ -17,7 +17,7 @@
 | API 兼容性 | **必须 .NET Framework**（非 .NET Standard 2.1） |
 | 总工期 | **10 周**（Sprint × 5，每轮 2 周） |
 | 开发人数 | 1 人 |
-| 当前进度 | **Sprint 1 完成** ✅（2026-05-08） |
+| 当前进度 | **Sprint 2 完成** ✅（2026-05-08） |
 
 ---
 
@@ -133,7 +133,74 @@
 
 ---
 
-## Sprint 2：Editor Window + 校验引擎（第 3–4 周）
+## Sprint 2：Editor Window + 校验引擎 ✅ 已完成（2026-05-08）
+
+> 实际产出：13 个新源文件 + 3 个修改文件 + 16 条校验规则
+
+### 实际完成 vs 计划
+
+| 计划 | 实际 | 偏差 |
+|------|------|------|
+| UI Toolkit 优先 | IMGUI（EditorGUILayout） | 2021.3 LTS 兼容性更好，UI Toolkit 在旧版功能不全 |
+| 独立 ExcelTreeView 文件 | 内联在 ExcelDataWindow 中 | 代码更紧凑，无独立复用需求 |
+| 5 个标签页分部实现 | 7 个 Drawer 类（含 Dashboard + Settings） | 比计划更完整 |
+| 校验规则内置 | 可插拔规则架构 + #Rules Sheet 动态规则 | 架构更灵活 |
+| 无进度条 | EditorUtility.DisplayProgressBar 实现 | 直接可用 |
+
+### 交付清单
+
+**Editor Window（7 个新文件）：**
+| 文件 | 对应步骤 | 功能 |
+|------|----------|------|
+| `ExcelDataWindow.cs` | 35-38 | 主窗口：文件树（支持 Ctrl/Shift 多选）+ 5 标签页 + 工具栏 + 状态栏 |
+| `DashboardDrawer.cs` | 84（提前） | Tab 0：项目总览、快速状态表、快捷操作 |
+| `DataPreviewDrawer.cs` | 39-41 | Tab 1：分页数据预览（100行/页）、表头颜色区分、关键词搜索 |
+| `ValidationDrawer.cs` | 53-56 | Tab 2：错误列表、颜色图标区分、双击定位、CSV 导出 |
+| `ExportDrawer.cs` | 43-46 | Tab 3：导出配置、路径选择、生成文件列表 |
+| `RuntimeDrawer.cs` | 57-59 | Tab 4：API 参考、代码示例、一键生成 DataManager |
+| `SettingsWindow.cs` | 87-93 | 独立设置窗口、EditorPrefs 持久化、已接入 Pipeline |
+
+**校验引擎（6 个新文件 + 2 个修改文件）：**
+
+| 文件 | 内容 |
+|------|------|
+| `Rules/IValidationRule.cs` | `IStructureRule` / `IDataRule` 接口 |
+| `Rules/StructureRules.cs` | 4 条规则：FieldNameUnique / TypeValidity / HeaderCompleteness / FieldNameSanity |
+| `Rules/DataRules.cs` | 7 条规则：IdRequired / IdUnique / TypeMatch / RequiredField / EnumSanity / ResPath / FormulaDetection |
+| `Rules/CustomDataRule.cs` | 支持 range / regex / multiple / not_empty / enum 从 `#Rules` Sheet 动态加载 |
+| `Rules/RulesSheetParser.cs` | 解析 Excel 中 `#Rules` Sheet（支持条件校验 `type=2`） |
+| `Rules/RuleConfig.cs` | 规则配置模型 |
+| `ValidationEngine.cs`（改） | 从内联逻辑重写为可插拔规则架构，支持自定义规则传入 |
+| `Pipeline.cs`（改） | 接入完整校验引擎 + 自动解析 `#Rules` Sheet + 进度回调 |
+| `ExcelToJsonMenu.cs`（改） | ValidateOnly 从占位符改为完整校验实现 |
+
+### 校验规则覆盖（16 条）
+
+| Stage | 规则 | 来源 |
+|-------|------|------|
+| Stage 1 — 结构 | 字段名唯一、类型声明合法、表头非空、字段名无特殊字符 | 内置 |
+| Stage 2 — 数据 | ID 必填、ID 唯一、类型匹配、Ref 必填、Enum 格式、Res 路径格式、公式检测 | 内置 |
+| Stage 2 — 自定义 | range、regex、multiple、not_empty/required、enum | `#Rules` Sheet |
+| Stage 3 — 引用 | 跨文件 ref 完整性检查 | Sprint 3 预留 |
+
+### 导出体验
+
+- 所有导出/校验操作均带 `EditorUtility.DisplayProgressBar` 进度条
+- 支持文件树 Ctrl/Shift 多选 → 批量导出/校验选中文件
+- 设置面板已接入 Pipeline，修改设置即时生效
+- 导出完成后自动切换到校验 Tab 显示结果
+
+### 已知限制
+
+| 限制 | 说明 |
+|------|------|
+| 虚拟滚动 | 当前使用普通 ScrollView，超大表（500+行）分页已缓解 |
+| 单元测试 | 规则类独立可测，但未创建 Unity Test Runner 测试文件 |
+| 进度条精度 | 按文件粒度更新，单文件内部不进一步分帧 |
+
+---
+
+## Sprint 2（计划，供参考）
 
 > 目标：有可视化面板了，策划能在 Unity 里看到数据，程序能看到错误。
 
