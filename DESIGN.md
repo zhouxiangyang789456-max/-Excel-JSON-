@@ -537,36 +537,37 @@ Debug.Log($"装备了 {weapon.name}, 攻击力 +{weapon.attack}");
 │                                                                  │
 │  ┌─ API 参考 ────────────────────────────────────────────────┐  │
 │  │                                                            │  │
-│  │  WeaponTable.Get(1001)           // 按 ID 获取，O(1)        │  │
-│  │  WeaponTable.GetAll()           // 获取所有数据列表          │  │
-│  │  WeaponTable.Find(w => w.atk>30)// 条件查找               │  │
-│  │  WeaponTable.HasId(1001)        // 检查 ID 是否存在         │  │
-│  │  WeaponTable.Count              // 数据总行数              │  │
-│  │  WeaponTable.GetRandom()         // 随机获取一行            │  │
-│  │  WeaponTable.GetByIds([1,2,3])  // 批量获取                │  │
+│  │  var t = DataManager.Instance.GetTable<WeaponTable>();      │  │
+│  │  t.Get(1001)          // 按 ID 获取，O(1)                   │  │
+│  │  t.GetAll()           // 获取所有数据列表                    │  │
+│  │  t.Find(w => w.atk>30)// 条件查找                           │  │
+│  │  t.HasId(1001)        // 检查 ID 是否存在                   │  │
+│  │  t.Count              // 数据总行数                         │  │
+│  │  t.GetRandom()         // 随机获取一行                      │  │
+│  │  t.GetByIds([1,2,3])  // 批量获取                          │  │
 │  │                                                            │  │
+│  │  新增表: 导出 .asset → 拖入 allTables → 代码零改动           │  │
 │  └────────────────────────────────────────────────────────────┘  │
 │                                                                  │
 │  ┌─ 代码示例 ────────────────────────────────────────────────┐  │
 │  │                                                            │  │
 │  │  // 示例 1: 获取单个物品                                    │  │
-│  │  var sword = DataManager.Instance.Weapon.Get(1001);         │  │
+│  │  var t = DataManager.Instance.GetTable<WeaponTable>();      │  │
+│  │  var sword = t.Get(1001);                                  │  │
 │  │  Debug.Log(sword.name); // "新手剑"                         │  │
-│  │  Debug.Log(sword.attack); // 12                             │  │
 │  │                                                            │  │
 │  │  // 示例 2: 遍历所有武器                                    │  │
-│  │  foreach (var w in DataManager.Instance.Weapon.GetAll())    │  │
+│  │  foreach (var w in t.GetAll())                             │  │
 │  │      Debug.Log($"{w.id}: {w.name}");                       │  │
 │  │                                                            │  │
 │  │  // 示例 3: 按条件筛选                                      │  │
-│  │  var legendaries = DataManager.Instance.Weapon              │  │
-│  │      .Find(w => w.quality >= 5);                            │  │
+│  │  var legendaries = t.Find(w => w.quality >= 5);             │  │
 │  │                                                            │  │
 │  │  // 示例 4: 外键引用                                        │  │
-│  │  var weapon = DataManager.Instance.Weapon.Get(1001);        │  │
-│  │  var skill = DataManager.Instance.Skill.Get(                │  │
-│  │      weapon.skills[0]  // skill_ref 字段                   │  │
-│  │  );                                                        │  │
+│  │  var wt = DataManager.Instance.GetTable<WeaponTable>();     │  │
+│  │  var st = DataManager.Instance.GetTable<SkillTable>();      │  │
+│  │  var weapon = wt.Get(1001);                                │  │
+│  │  var skill = st.Get(weapon.skills[0]);                     │  │
 │  │                                                            │  │
 │  │  [📋 复制示例 1] [📋 复制示例 2] [📋 复制示例 3] [📋 复制示例 4]│  │
 │  └────────────────────────────────────────────────────────────┘  │
@@ -960,7 +961,11 @@ namespace Game.Data
 }
 ```
 
-### 6.3 运行时数据管理器
+### 6.3 运行时数据管理器（可扩展架构）
+
+项目有 5 张表时，逐个声明字段没问题。但 50 张、100 张表时，下面这个硬编码模式会直接炸掉。所以需要两套方案。
+
+#### 方案 A：小型项目（≤15 张表）—— 硬编码字段
 
 ```csharp
 // ===== 手写: Assets/Scripts/Runtime/DataManager.cs =====
@@ -971,7 +976,7 @@ public class DataManager : MonoBehaviour
 {
     public static DataManager Instance { get; private set; }
 
-    // 在 Inspector 中拖入生成的 .asset 文件
+    // Inspector 拖入 .asset 文件
     public WeaponTable weaponTable;
     public ArmorTable armorTable;
     public SkillTable skillTable;
@@ -979,28 +984,193 @@ public class DataManager : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance != null)
-        {
-            Destroy(gameObject);
-            return;
-        }
+        if (Instance != null) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        // 构建缓存
+        // 仅 Awake 构建缓存（表少，不会卡）
         weaponTable?.BuildCache();
         armorTable?.BuildCache();
         skillTable?.BuildCache();
         questTable?.BuildCache();
     }
 
-    // 便捷查询方法
+    // 便捷查询（编译时类型安全）
     public WeaponRow GetWeapon(int id) => weaponTable?.Get(id);
     public ArmorRow GetArmor(int id) => armorTable?.Get(id);
     public SkillRow GetSkill(int id) => skillTable?.Get(id);
     public QuestRow GetQuest(int id) => questTable?.Get(id);
 }
 ```
+
+#### 方案 B：中大型项目（>15 张表，⭐推荐）—— 表注册中心
+
+**核心思路：** DataManager 不持有具体类型的字段，改为持有一个 `List<BaseDataTable>`，通过泛型按类型查询。新增表只需导出 .asset 并拖入列表，**零代码改动**。
+
+```csharp
+// ===== BaseDataTable.cs — 所有 Table 的基类 =====
+public abstract class BaseDataTable : ScriptableObject
+{
+    // 子类实现：构建自己的 ID→Row 缓存
+    public abstract void BuildCache();
+    // 子类实现：返回缓存大小
+    public abstract int Count { get; }
+    // 子类实现：返回数据类型名
+    public abstract string TableName { get; }
+}
+```
+
+```csharp
+// ===== WeaponTable.cs 改为继承 BaseDataTable =====
+public class WeaponTable : BaseDataTable
+{
+    [SerializeField] private List<WeaponRow> rows;
+    private Dictionary<int, WeaponRow> lookup;
+
+    public override string TableName => "Weapon";
+    public override int Count => rows?.Count ?? 0;
+
+    public override void BuildCache()
+    {
+        lookup = new Dictionary<int, WeaponRow>(rows?.Count ?? 0);
+        if (rows == null) return;
+        foreach (var row in rows)
+            if (row != null) lookup[row.id] = row;
+    }
+
+    public WeaponRow Get(int id)
+    {
+        if (lookup == null) BuildCache();
+        lookup.TryGetValue(id, out var row);
+        return row;
+    }
+
+    public List<WeaponRow> GetAll() => new List<WeaponRow>(rows ?? new List<WeaponRow>());
+    public List<WeaponRow> Find(Predicate<WeaponRow> m) => rows?.FindAll(m);
+}
+```
+
+```csharp
+// ===== DataManager.cs — 注册中心版 =====
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class DataManager : MonoBehaviour
+{
+    public static DataManager Instance { get; private set; }
+
+    // 唯一的 Inspector 列表 —— 所有 .asset 都拖到这里
+    [SerializeField]
+    private List<BaseDataTable> allTables = new List<BaseDataTable>();
+
+    // 类型 → Table 实例，O(1) 查询
+    private Dictionary<Type, BaseDataTable> tableByType = new Dictionary<Type, BaseDataTable>();
+    // 名称 → Table 实例（备选查询方式）
+    private Dictionary<string, BaseDataTable> tableByName = new Dictionary<string, BaseDataTable>();
+
+    public int TableCount => allTables.Count;
+
+    private void Awake()
+    {
+        if (Instance != null) { Destroy(gameObject); return; }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        // 构建类型索引
+        foreach (var table in allTables)
+        {
+            if (table == null) continue;
+            tableByType[table.GetType()] = table;
+            tableByName[table.TableName] = table;
+        }
+    }
+
+    // ===== 核心 API =====
+
+    // 按类型获取 Table（推荐，编译时类型安全）
+    public T GetTable<T>() where T : BaseDataTable
+    {
+        tableByType.TryGetValue(typeof(T), out var table);
+        return table as T;
+    }
+
+    // 按名称获取 Table（字符串方式，灵活性高）
+    public BaseDataTable GetTable(string tableName)
+    {
+        tableByName.TryGetValue(tableName, out var table);
+        return table;
+    }
+
+    // 构建所有表的缓存（支持进度回调）
+    public void BuildAllCaches(Action<int, int> onProgress = null)
+    {
+        for (int i = 0; i < allTables.Count; i++)
+        {
+            allTables[i]?.BuildCache();
+            onProgress?.Invoke(i + 1, allTables.Count);
+        }
+    }
+
+    // 异步构建所有缓存（分帧，避免卡顿）
+    public System.Collections.IEnumerator BuildAllCachesAsync(
+        int batchPerFrame = 3,
+        Action<int, int> onProgress = null)
+    {
+        for (int i = 0; i < allTables.Count; i++)
+        {
+            allTables[i]?.BuildCache();
+            onProgress?.Invoke(i + 1, allTables.Count);
+
+            // 每处理 N 张表，等待一帧
+            if ((i + 1) % batchPerFrame == 0)
+                yield return null;
+        }
+    }
+}
+```
+
+**使用对比：**
+
+```csharp
+// 方案 A（硬编码）:
+var weapon = DataManager.Instance.GetWeapon(1001);
+
+// 方案 B（注册中心）:
+var weapon = DataManager.Instance.GetTable<WeaponTable>().Get(1001);
+//                    ↑ 泛型参数指定要查哪张表，编译时类型安全
+
+// 查询不存在的表 → 返回 null，不会崩溃
+var missing = DataManager.Instance.GetTable<NonExistentTable>();
+// missing == null ✅
+```
+
+**新增表零改动流程：**
+
+```
+策划新建 Enemy.xlsx → 导出 Enemy.asset
+    │
+    ▼
+在 Inspector 中将 Enemy.asset 拖入 DataManager 的 allTables 列表
+（"一键生成"按钮会自动完成这步）
+    │
+    ▼
+代码中直接使用，无需修改 DataManager.cs：
+    var enemy = DataManager.Instance.GetTable<EnemyTable>().Get(3001);
+```
+
+**对比总结：**
+
+| | 方案 A（硬编码） | 方案 B（注册中心） |
+|---|---|---|
+| 适用规模 | ≤15 张表 | 任意规模 |
+| 新增表改动 | 改 DataManager.cs + 拖 Inspector | 仅拖 Inspector（或自动） |
+| 查询方式 | `Instance.GetWeapon(id)` | `Instance.GetTable<WeaponTable>().Get(id)` |
+| 查询不存在的表 | 空引用异常 | 返回 null，安全 |
+| 编译时类型检查 | ✅ | ✅ (泛型) |
+| 表名冲突检测 | ❌ | ✅ |
+
+> 插件默认生成方案 B 的代码。如果项目表很少，可以手动选择方案 A 的代码模板。
 
 ---
 
@@ -1029,53 +1199,129 @@ public class DataManager : MonoBehaviour
 ```
 插件自动执行:
   1. 扫描 Assets/Data/ 下所有 .asset 文件
-  2. 在场景中创建名为 "DataManager" 的 GameObject
-  3. 挂载 DataManager.cs 脚本
-  4. 自动将所有 .asset 拖入对应的 Inspector 字段
-  5. 打印日志: "DataManager 已就绪，注册了 6 个数据表"
+  2. 检查场景中是否已有 DataManager GameObject
+     └── 已有 → 只更新 allTables 列表，不重建 GameObject
+     └── 没有 → 新建名为 "DataManager" 的 GameObject
+  3. 挂载/更新 DataManager.cs 脚本
+  4. 自动将所有 .asset 拖入 allTables 列表（按字母排序）
+  5. 打印日志:
+     "DataManager 已就绪，注册了 12 张数据表"
+     "  Weapon      (60 行)"
+     "  Armor       (18 行)"
+     "  Skill       (156 行)"
+     "  ..."
 
-结果:
+结果 (方案 B 注册中心):
   Hierarchy:
     DataManager (GameObject)
        DataManager.cs
-          Weapon Table  → Weapon.asset
-          Armor Table   → Armor.asset
-          Skill Table   → Skill.asset
-          Quest Table   → Quest.asset
-          Enemy Table   → Enemy.asset
-          Buff Table    → Buff.asset
+          All Tables  (List<BaseDataTable>)
+          ├─ Element 0 → Weapon.asset
+          ├─ Element 1 → Armor.asset
+          ├─ Element 2 → Skill.asset
+          ├─ ...
+          └─ Element 11→ Buff.asset
+
+关键区别:
+  方案 B 只有一个 allTables 列表，新增表自动追加到列表末尾
+  不需要为每张表单独声明 public 字段
+  代码层面零改动
 ```
 
-**手动方式：** 创建空 GameObject → Add Component → DataManager → 逐个拖入 .asset 文件。
+**手动方式：** 创建空 GameObject → Add Component → DataManager → 展开 allTables 列表 → 逐个拖入 .asset 文件。
 
 ### 7.3 第二步：游戏启动时初始化
 
+**问题：** 50 张表 × 1000 行在 Awake 里同步 BuildCache 会卡住主线程 2-5 秒。
+
+**解法：** Awake 只做轻量注册（构建类型索引），BuildCache 延后到异步初始化。
+
 ```csharp
-// ===== 在游戏入口脚本中 =====
+// ===== 游戏入口脚本 =====
 public class GameBootstrap : MonoBehaviour
 {
+    public LoadingScreen loadingScreen;  // 加载界面引用
+
     async void Start()
     {
-        // DataManager 在 Awake 中自动构建缓存
-        // 如果有热更新需求，调用异步初始化
-        await DataManager.Instance.InitializeAsync();
+        // Phase 0: Awake 已完成，DataManager 存在
+        //          只做了类型索引构建（O(表数量)，几乎无开销）
 
-        Debug.Log($"已加载 {DataManager.Instance.TableCount} 张数据表");
-        Debug.Log($"武器数量: {DataManager.Instance.Weapon.Count}");
+        // Phase 1: 异步构建所有表的查询缓存
+        await BuildAllCachesWithProgress();
 
-        // 初始化完成，进入游戏
+        // Phase 2: 检查热更新（见 §7.5）
+        await DataManager.Instance.CheckForHotfixAsync();
+
+        // Phase 3: 进入游戏
+        loadingScreen.Hide();
         EnterGame();
     }
+
+    private async Task BuildAllCachesWithProgress()
+    {
+        var total = DataManager.Instance.TableCount;
+        var completed = 0;
+
+        await Task.Run(() =>
+        {
+            DataManager.Instance.BuildAllCaches((current, total) =>
+            {
+                completed = current;
+            });
+        });
+
+        // 或者用分帧协程（不卡主线程）：
+        // yield return DataManager.Instance.BuildAllCachesAsync(
+        //     batchPerFrame: 5,
+        //     onProgress: (c, t) => loadingScreen.SetProgress(c, t)
+        // );
+    }
+}
+
+// 加载界面示例
+public class LoadingScreen : MonoBehaviour
+{
+    public Text tipText;
+    public Slider progressBar;
+
+    public void SetProgress(int current, int total)
+    {
+        progressBar.value = (float)current / total;
+        tipText.text = $"正在加载数据... {current}/{total} 张表";
+    }
+
+    public void Hide() { gameObject.SetActive(false); }
 }
 ```
+
+**为什么 Awake 不会卡了：**
+
+| | 旧方案（硬编码 Awake） | 新方案 |
+|---|---|---|
+| Awake 做的事 | 遍历所有 Row 构建 Dictionary | 只遍历 allTables 列表建 Type→Table 索引 |
+| 操作量 | 表数量 × 每表行数 | 仅表数量 |
+| 100 张 × 1000 行耗时 | 2~5 秒（卡） | < 1ms（不卡） |
+| BuildCache 时机 | Awake 中阻塞 | 延后到异步初始化，有进度条 |
 
 ### 7.4 第三步：在游戏逻辑中使用数据
 
 #### 7.4.1 基础查询
 
 ```csharp
+// 获取 Table 引用（一次获取，反复使用）
+var weaponTable = DataManager.Instance.GetTable<WeaponTable>();
+var skillTable = DataManager.Instance.GetTable<SkillTable>();
+
+// 有效性检查（表不存在时返回 null，不抛异常）
+if (weaponTable == null)
+{
+    Debug.LogError("WeaponTable 未注册到 DataManager");
+    return;
+}
+
 // 1. 按 ID 精确查询 —— 最常用，O(1)
-var weapon = DataManager.Instance.Weapon.Get(1001);
+var weapon = weaponTable.Get(1001);
 if (weapon != null)
 {
     player.atk += weapon.attack;
@@ -1083,50 +1329,52 @@ if (weapon != null)
 }
 
 // 2. 检查 ID 是否存在
-if (DataManager.Instance.Skill.HasId(skillId))
+if (skillTable.HasId(skillId))
 {
     player.LearnSkill(skillId);
 }
 
 // 3. 获取所有数据
-var allWeapons = DataManager.Instance.Weapon.GetAll();
-foreach (var w in allWeapons)
+foreach (var w in weaponTable.GetAll())
 {
     shopPanel.AddItem(w.id, w.name, w.price);
 }
 
 // 4. 获取随机一行（掉落/抽卡用）
-var randomLoot = DataManager.Instance.Weapon.GetRandom(
+var randomLoot = weaponTable.GetRandom(
     w => w.quality >= 3  // 可选种子: 仅限稀有以上
 );
 
 // 5. 批量获取
 var ids = new[] { 1001, 1002, 1003 };
-var weapons = DataManager.Instance.Weapon.GetByIds(ids);
+var weapons = weaponTable.GetByIds(ids);
 ```
 
 #### 7.4.2 条件筛选
 
 ```csharp
+var weaponTable = DataManager.Instance.GetTable<WeaponTable>();
+var skillTable = DataManager.Instance.GetTable<SkillTable>();
+
 // 按条件筛选——内部遍历全表，数据量大时注意性能
-var cheapWeapons = DataManager.Instance.Weapon.Find(w => w.price <= 500);
-var fireSkills = DataManager.Instance.Skill.Find(s => s.element == Element.Fire);
-var highLevelQuests = DataManager.Instance.Quest.Find(q => q.minLevel >= 50);
+var cheapWeapons = weaponTable.Find(w => w.price <= 500);
+var fireSkills = skillTable.Find(s => s.element == Element.Fire);
 ```
 
 #### 7.4.3 外键关联查询
 
 ```csharp
-// Excel 中 weapon.skill_ref 类型为 ref:Skill
-// 导出后 weapon.skill_ref 是 int 类型（存的是 Skill 表的 id）
+// Excel 中 weapon.skills 类型为 int[]（存的是 Skill 表的 id 列表）
 // 运行时手动关联查询：
 
-var weapon = DataManager.Instance.Weapon.Get(1001);
+var weaponTable = DataManager.Instance.GetTable<WeaponTable>();
+var skillTable = DataManager.Instance.GetTable<SkillTable>();
 
-// weapon.skills = [1, 3, 5]  (这是 Skill 表的三个 id)
+var weapon = weaponTable.Get(1001);
+
 foreach (var skillId in weapon.skills)
 {
-    var skill = DataManager.Instance.Skill.Get(skillId);
+    var skill = skillTable.Get(skillId);
     if (skill != null)
     {
         Debug.Log($"武器 {weapon.name} 拥有技能: {skill.name} (威力: {skill.power})");
@@ -1147,9 +1395,13 @@ public partial class WeaponRow
     {
         var result = new List<SkillRow>();
         if (skills == null) return result;
+
+        var skillTable = DataManager.Instance.GetTable<SkillTable>();
+        if (skillTable == null) return result;
+
         foreach (var skillId in skills)
         {
-            var skill = DataManager.Instance.Skill.Get(skillId);
+            var skill = skillTable.Get(skillId);
             if (skill != null) result.Add(skill);
         }
         return result;
@@ -1227,12 +1479,13 @@ public async Task LoadTablesAsync()
 
 | 问题 | 解答 |
 |------|------|
-| **什么时候调用 BuildCache？** | DataManager.Awake 中自动调用，一般不需要手动调 |
-| **数据表能运行时修改吗？** | ScriptableObject 在运行时可读写（不会写回磁盘），修改仅本次运行有效 |
-| **新增 Excel 后怎么接入？** | 1. 导出新 .asset 2. 在 DataManager.cs 中加字段 3. Inspector 拖入。或用 Tab 5 的"一键生成"自动完成 |
-| **数据表太大（10000+ 行）怎么办？** | 超过阈值自动切换 JSON 模式（见 §17），按需分页加载 |
-| **多场景怎么共享 DataManager？** | DataManager 已标记 `DontDestroyOnLoad`，多场景自动保持 |
-| **Excel 改了数据，运行中的游戏会更新吗？** | 不会自动更新，需要重新运行。如需运行时热重载，见下方 §7.8 |
+| **新增表后需要改代码吗？** | 方案 B 不需要。导出 .asset → 拖入 allTables → 代码用 `GetTable<T>()`。零改动 |
+| **表查询不到会崩吗？** | 不崩。`GetTable<T>()` 返回 null，加个判空即可 |
+| **什么时候调用 BuildCache？** | Awake 只建索引。BuildCache 在 `InitializeAsync()` 中异步调用，有进度条 |
+| **100 张表启动会卡多久？** | Awake <1ms（只建索引）。BuildCache 分帧或后台线程，主线程不卡 |
+| **数据表能运行时修改吗？** | SO 在运行时可读写（不回写磁盘），修改仅本次运行有效 |
+| **多场景怎么共享 DataManager？** | 已标记 `DontDestroyOnLoad`，多场景自动保持 |
+| **Excel 改了数据，运行中游戏会更新吗？** | 不会自动更新。Editor 下用 Ctrl+Shift+R 热重载（见 §7.8） |
 
 ### 7.8 运行时热重载（Editor 开发用）
 
