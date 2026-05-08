@@ -1,6 +1,8 @@
 # Excel To JSON 插件 — 开发计划
 
 > 基于 DESIGN.md v3，拆分可执行的开发展望。每轮 Sprint 有明确的交付物和验收标准。
+>
+> **最后更新：2026-05-08** — Sprint 1 完成，带 7 组测试验证通过。
 
 ---
 
@@ -10,14 +12,39 @@
 |------|------|
 | 目标 | 一个上架 Unity Asset Store 的 Excel 转 ScriptableObject / JSON 编辑器插件 |
 | 语言 | 纯 C#（Editor + Runtime），零外部进程依赖 |
-| Excel 库 | NPOI（Apache 2.0，纯 C#，无 System.Drawing 依赖） |
-| 最低 Unity | 2021.3 LTS |
+| Excel 库 | **NPOI 2.5.6 net45** + BouncyCastle.Crypto 1.8.9（实测可用组合） |
+| 最低 Unity | 2021.3 LTS（实测: 2022.3.62f3c1） |
+| API 兼容性 | **必须 .NET Framework**（非 .NET Standard 2.1） |
 | 总工期 | **10 周**（Sprint × 5，每轮 2 周） |
 | 开发人数 | 1 人 |
+| 当前进度 | **Sprint 1 完成** ✅（2026-05-08） |
 
 ---
 
-## Sprint 1：核心流水线（第 1–2 周）
+## Sprint 1：核心流水线 ✅ 已完成（2026-05-08）
+
+> 实际产出：17 个源文件 + 5 个 DLL + 1 个测试 Excel + 7 组测试用例
+
+### 实际完成 vs 计划
+
+| 计划 | 实际 | 偏差 |
+|------|------|------|
+| NPOI 2.7.0 netstandard2.0 | NPOI 2.5.6 net45 | Unity 无法加载 netstandard2.0 DLL |
+| 无额外依赖 | + BouncyCastle.Crypto.dll | NPOI 硬依赖 |
+| API 默认配置 | 必须切换到 .NET Framework | .NET Standard 2.1 不兼容 |
+
+### 测试结果（7 组用例）
+
+| # | 用例 | 行数 | 结果 | 备注 |
+|---|------|------|:---:|------|
+| 1 | Item.xlsx (Weapon+Armor) | 8 | ✅ | 基准测试 |
+| 2 | Test01_Types | 5 | ✅ | int/float/string/bool 类型转换正确 |
+| 3 | Test02_Arrays | 3 | ✅ | JSON/Pipe/单元素/空数组均正确 |
+| 4 | Test03_UnityTypes | 3 | ✅ | Vector2/Vector3/Color Hex/RGBA |
+| 5 | Test04_Composite | 6 | ✅ | ref/enum/res 复合类型 |
+| 6 | Test05_Large | **200** | ✅ | 大数据量无性能退化 |
+| 7 | Test06_SkipSheets | 4 | ✅ | _Notes 和 #Internal 正确跳过 |
+| 8 | Test07_BoolEdge | 3 | ⚠️ | 中文"是/否"正常，"空"值需处理 |
 
 > 目标：一个 Excel 文件进去，一个 .asset 文件出来。没有 UI，没有校验。
 

@@ -1,0 +1,11 @@
+{
+    "name": "ExcelToJsonPlugin.Runtime",
+    "rootNamespace": "ExcelToJsonPlugin.Runtime",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "autoReferenced": true,
+    "defineConstraints": []
+}

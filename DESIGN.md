@@ -40,7 +40,29 @@
 | **MiniExcel** | ✅ | MIT 协议，纯 C#，性能最好。但功能偏简单，复杂格式解析弱 |
 | **NPOI** | ✅ | Apache 2.0，纯 C#，**读写都支持**，经过 15 年+ 验证，Unity 社区多用 |
 
-**最终选择：NPOI** — 既能读也能写，无 System.Drawing 依赖，协议友好。
+**最终选择：NPOI 2.5.6 net45** — 经过实际 Unity 2022.3 验证的版本。
+
+**实测结论（2026-05-08）：**
+
+| 尝试 | 结果 | 原因 |
+|------|:---:|------|
+| NPOI 2.7.0 netstandard2.0 | ❌ 编译通过但 DLL 加载失败 | Unity 缺少 System.Buffers/Memory 等依赖 |
+| NPOI 2.7.0 net40 | ❌ 同版本无此目标 | — |
+| NPOI 2.5.6 netstandard2.0 | ❌ 同上 | — |
+| **NPOI 2.5.6 net45** | ✅ | .NET Framework 4.5  = Unity Editor 原生兼容 |
+| NPOI 2.5.6 net45 + BouncyCastle.Crypto | ✅ | NPOI 必需依赖 |
+| 不装 BouncyCastle.Crypto | ❌ | `Unable to resolve reference 'BouncyCastle.Crypto'` |
+
+**最终 DLL 组合（5 个文件）：**
+- `NPOI.dll`（2.5.6 net45）
+- `NPOI.OOXML.dll`（2.5.6 net45）
+- `NPOI.OpenXml4Net.dll`（2.5.6 net45）
+- `NPOI.OpenXmlFormats.dll`（2.5.6 net45）
+- `BouncyCastle.Crypto.dll`（1.8.9 netstandard2.0）
+
+**Unity 项目设置要求：**
+- API Compatibility Level: `.NET Framework`（不是 .NET Standard 2.1）
+- Unity 版本: 2021.3 LTS 以上
 
 ### 1.3 竞品对比
 
@@ -2216,3 +2238,66 @@ NPOI 能读取公式字符串，但不能像 Excel 一样实时求值。如果�
 | Schema 变更 | 无 | **自动检测 + 分级处理 + 确认弹窗** | 策划频繁改表头会破坏代码 |
 | Addressables | 无 | **自动注册 + 分组** | 现代 Unity 项目标配 |
 | asmdef 隔离 | 无 | **Editor/Runtime 分 assembly** | 防止 NPOI DLL 打入游戏包 |
+| NPOI 版本 | 2.7.0 netstandard2.0 | **NPOI 2.5.6 net45** | 实测 2.7.0 DLL 在 Unity 中加载失败（缺 System.Buffers） |
+| NPOI 依赖 | 只有 NPOI | **+ BouncyCastle.Crypto** | NPOI 硬依赖，否则 DLL 加载报 `Unable to resolve reference` |
+| API 兼容性 | .NET Standard 2.1 | **.NET Framework** | NPOI net45 需要 .NET Framework，否则 DLL 加载失败 |
+| Pipeline 两段式 | 一次 Pass 完成 | **Code Gen → Unity 编译 → Asset Gen** | 首次导出的 C# 类未编译完，反射找不到 |
+
+---
+
+## 附录 D：Sprint 1 实测记录（2026-05-08，最终版）
+
+**环境：** Unity 2022.3.62f3c1, API `.NET Framework`, NPOI 2.5.6 net45 + BouncyCastle.Crypto 1.8.9
+
+**产出：** 17 个 C# 源文件 + 5 个 DLL + 11 个测试 Excel
+
+### D.1 类型覆盖测试（15/15 全通过）
+
+| # | 类型 | 测试文件 | 边界覆盖 | 结果 |
+|---|------|----------|----------|:---:|
+| 1 | `int` | Test11 | 0, max(2147483647), min(-2147483648) | ✅ |
+| 2 | `float` | Test11 | 0.000001, 999999.999, 整型浮点(100), -0.5 | ✅ |
+| 3 | `string` | Test01 | 空值, 中文, 英文, 特殊字符(!@#$%) | ✅ |
+| 4 | `bool` | Test01,07 | true/false, 0/1, yes/no, Y/N, 是/否 | ✅ |
+| 5 | `int[]` | Test02,10 | 负数, 大值, 单元素, `[]`, JSON格式 | ✅ |
+| 6 | `float[]` | Test02,10 | 管道分隔(`1.5\|2.0\|3.14`), 小数 | ✅ |
+| 7 | `string[]` | Test08 | 中文, 英文, `[]`, 单元素 | ✅ |
+| 8 | `Vector2` | Test03 | `[1,2]`, `[0.5,1.5]`, `[-1,0]` | ✅ |
+| 9 | `Vector3` | Test03 | `[1,2,3]`, `[0,0,0]`, `[100,200,300]` | ✅ |
+| 10 | `Color` | Test03 | Hex `#FF0000`, Hex+Alpha `#00FF00FF`, RGBA | ✅ |
+| 11 | `enum:X` | Test04 | `enum:Quality` → int 存储 | ✅ |
+| 12 | `ref:X` | Test04, Char+Skill | `ref:Skill`, `int[]` 批量引用 | ✅ |
+| 13 | `res` | Test04,09 | Sprite/GameObject/AudioClip/Texture2D/Material, 纯res无子类型 | ✅ |
+| 14 | `json` | Test08 | 嵌套`{"require":{"lv":50}}`, `{}`, 空 | ✅ |
+| 15 | `loc` | Test08 | `ITEM_SWORD_001`, `QUEST_MAIN_001` | ✅ |
+
+### D.2 功能测试
+
+| # | 用例 | 行数 | 结果 | 说明 |
+|---|------|------|:---:|------|
+| 1 | Item.xlsx (Weapon+Armor) | 8 | ✅ | 基准：2 Sheet，9 列，含中文 |
+| 2 | Character.xlsx + Skill.xlsx | 4+6 | ✅ | 跨表引用：`ref:Skill` + `int[]` 关联 |
+| 3 | Test05_Large | 200 | ✅ | 200 行 0.1s，无性能退化 |
+| 4 | Test06_SkipSheets | 4 | ✅ | `_Notes` 和 `#Internal` 正确跳过 |
+| 5 | Test11_NumEdge | 2 | ✅ | 整型极值、浮点边界、零值 | 
+
+**总计：11 个 Excel，14 个 Sheet，252 行数据，0 个类型转换错误。**
+
+### D.3 已知限制
+
+| 限制 | 影响 | 应对 |
+|------|------|------|
+| 首次导出需运行两次 | 首先生成 .cs → Unity 编译 → 再导出生成 .asset | CLI 中自动处理；Editor Window 中引导用户点两次 |
+| NPOI 公式只能读缓存值 | 含公式的单元格导出的是上次 Excel 保存时的值 | 导出时检测公式并 Warning |
+| 空单元格存储格式 | Excel 中空单元格若为数值型则 NPOI 读成 0 | 建议策划在模板中预设正确的单元格格式 |
+| C# 关键字冲突 | 字段名若为 `internal`/`class` 等关键字会编译失败 | 已加关键字检测，自动加 `_` 前缀 |
+
+### D.4 开发中发现的关键决策变更
+
+| 决策 | 设计文档 v3 | 实测结论 |
+|------|------------|----------|
+| NPOI 版本 | 2.7.0 | **2.5.6** — 2.7.0 DLL 在 Unity 中无法加载 |
+| 目标框架 | netstandard2.0 | **net45** — Unity Editor 运行在 .NET Framework 4.8 |
+| 额外依赖 | 无 | **BouncyCastle.Crypto 1.8.9** — NPOI 硬依赖 |
+| API 兼容 | .NET Standard 2.1 | **.NET Framework** — 非此模式 NPOI DLL 加载失败 |
+| Pipeline | 单次 Pass | **两段式** — Code Gen 后需等 Unity 编译再 Asset Gen |
