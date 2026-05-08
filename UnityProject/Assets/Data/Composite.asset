@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 781f9ed8a78c54b4eb78f9424a479a30, type: 3}
+  m_Name: Composite
+  m_EditorClassIdentifier: 
+  rows:
+  - id: 1
+    name: ???
+    ref_val: 100
+    enum_val: 1
+    icon: Ui/Icon/Main
+    prefab: Prefabs/Main
+    sound: Audio/SFX/Click
+  - id: 2
+    name: ???
+    ref_val: 101
+    enum_val: 2
+    icon: Ui/Icon/Sub
+    prefab: 0
+    sound: 0
+  - id: 3
+    name: ???
+    ref_val: 0
+    enum_val: 3
+    icon: 0
+    prefab: Prefabs/Empty
+    sound: 0

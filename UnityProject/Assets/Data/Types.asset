@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 289f31c3a494c4c49a3078c28b410b6a, type: 3}
+  m_Name: Types
+  m_EditorClassIdentifier: 
+  rows:
+  - id: 1
+    int_val: 100
+    float_val: 3.14
+    str_val: hello
+    bool_val: 1
+    empty_col: 0
+  - id: 2
+    int_val: -50
+    float_val: 0
+    str_val: 0
+    bool_val: 0
+    empty_col: 0
+  - id: 3
+    int_val: 0
+    float_val: -1.5
+    str_val: '!@#$%'
+    bool_val: 0
+    empty_col: 0
+  - id: 4
+    int_val: 99999
+    float_val: 0.001
+    str_val: ?? ?
+    bool_val: 0
+    empty_col: 0
+  - id: 5
+    int_val: -1
+    float_val: 100
+    str_val: multi
+    bool_val: 1
+    empty_col: 0

@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b82b1119b5d998b4f92088ea50f190b8, type: 3}
+  m_Name: Character
+  m_EditorClassIdentifier: 
+  rows:
+  - id: 101
+    name: "\u4E9A\u745F"
+    job: "\u6218\u58EB"
+    hp: 1500
+    atk: 120
+    skill_ids: 0100000003000000
+    ultimate_skill: 1
+    avatar: Ui/Avatar/Arthur
+  - id: 102
+    name: "\u6885\u6797"
+    job: "\u6CD5\u5E08"
+    hp: 800
+    atk: 200
+    skill_ids: 0200000005000000
+    ultimate_skill: 2
+    avatar: Ui/Avatar/Merlin
+  - id: 103
+    name: "\u827E\u7433"
+    job: "\u7267\u5E08"
+    hp: 700
+    atk: 80
+    skill_ids: 0400000006000000
+    ultimate_skill: 4
+    avatar: Ui/Avatar/Eileen
+  - id: 104
+    name: "\u5170\u65AF"
+    job: "\u9A91\u58EB"
+    hp: 2000
+    atk: 150
+    skill_ids: 010000000300000005000000
+    ultimate_skill: 3
+    avatar: Ui/Avatar/Lance

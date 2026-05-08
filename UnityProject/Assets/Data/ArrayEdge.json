@@ -1,0 +1,20 @@
+﻿[
+  {
+    "id": 1,
+    "neg_arr": [-5, 0, 3],
+    "big_arr": [999999, 0, -888888],
+    "single_arr": [42],
+    "empty": [],
+    "pipe_float": [1.5, 2, 3.14],
+    "mixed": [1, 2, 3]
+  },
+  {
+    "id": 2,
+    "neg_arr": [-100, 50, -1],
+    "big_arr": [0],
+    "single_arr": [7],
+    "empty": [],
+    "pipe_float": [0.1, 99.9],
+    "mixed": [100]
+  }
+]

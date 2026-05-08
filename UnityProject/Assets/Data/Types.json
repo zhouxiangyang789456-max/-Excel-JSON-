@@ -1,0 +1,42 @@
+﻿[
+  {
+    "id": 1,
+    "int_val": 100,
+    "float_val": 3.14,
+    "str_val": "hello",
+    "bool_val": true,
+    "empty_col": "0"
+  },
+  {
+    "id": 2,
+    "int_val": -50,
+    "float_val": 0,
+    "str_val": "0",
+    "bool_val": false,
+    "empty_col": "0"
+  },
+  {
+    "id": 3,
+    "int_val": 0,
+    "float_val": -1.5,
+    "str_val": "!@#$%",
+    "bool_val": false,
+    "empty_col": "0"
+  },
+  {
+    "id": 4,
+    "int_val": 99999,
+    "float_val": 0.001,
+    "str_val": "?? ?",
+    "bool_val": false,
+    "empty_col": "0"
+  },
+  {
+    "id": 5,
+    "int_val": -1,
+    "float_val": 100,
+    "str_val": "multi",
+    "bool_val": true,
+    "empty_col": "0"
+  }
+]
