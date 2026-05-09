@@ -9,15 +9,7 @@
     ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
-    "overrideReferences": true,
-    "precompiledReferences": [
-        "Dependencies/NPOI.dll",
-        "Dependencies/NPOI.OOXML.dll",
-        "Dependencies/NPOI.OpenXml4Net.dll",
-        "Dependencies/NPOI.OpenXmlFormats.dll",
-        "Dependencies/ICSharpCode.SharpZipLib.dll",
-        "Dependencies/BouncyCastle.Crypto.dll"
-    ],
+    "overrideReferences": false,
     "autoReferenced": true,
     "defineConstraints": []
 }
