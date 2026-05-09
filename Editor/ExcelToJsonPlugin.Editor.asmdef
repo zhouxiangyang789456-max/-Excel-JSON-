@@ -11,12 +11,12 @@
     "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [
-        "NPOI.dll",
-        "NPOI.OOXML.dll",
-        "NPOI.OpenXml4Net.dll",
-        "NPOI.OpenXmlFormats.dll",
-        "ICSharpCode.SharpZipLib.dll",
-        "BouncyCastle.Crypto.dll"
+        "Dependencies/NPOI.dll",
+        "Dependencies/NPOI.OOXML.dll",
+        "Dependencies/NPOI.OpenXml4Net.dll",
+        "Dependencies/NPOI.OpenXmlFormats.dll",
+        "Dependencies/ICSharpCode.SharpZipLib.dll",
+        "Dependencies/BouncyCastle.Crypto.dll"
     ],
     "autoReferenced": true,
     "defineConstraints": []

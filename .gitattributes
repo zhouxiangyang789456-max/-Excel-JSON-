@@ -1,0 +1,16 @@
+# Unity plugin assemblies (binary, prevent git from corrupting with line-ending conversion)
+*.dll binary
+*.pdb binary
+*.exe binary
+
+# Unity text assets - force LF line endings
+*.cs text eol=lf
+*.asmdef text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+
+# Unity binary assets
+*.asset binary
+*.unity binary
+*.prefab binary
+*.mat binary
