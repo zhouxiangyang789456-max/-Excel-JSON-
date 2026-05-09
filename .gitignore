@@ -7,6 +7,17 @@
 [Ll]ogs/
 [Uu]ser[Ss]ettings/
 
+# Unity test project (subdirectory)
+UnityProject/[Ll]ibrary/
+UnityProject/[Tt]emp/
+UnityProject/[Oo]bj/
+UnityProject/[Bb]uild/
+UnityProject/[Bb]uilds/
+UnityProject/[Ll]ogs/
+UnityProject/[Uu]ser[Ss]ettings/
+UnityProject/*.csproj
+UnityProject/*.sln
+
 # IDE
 .idea/
 .vs/

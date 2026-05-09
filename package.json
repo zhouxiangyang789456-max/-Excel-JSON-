@@ -1,0 +1,29 @@
+{
+  "name": "com.github.excel-to-json",
+  "displayName": "Excel To JSON",
+  "version": "1.0.0",
+  "unity": "2021.3",
+  "description": "Convert Excel spreadsheets (.xlsx/.xls) into strongly-typed ScriptableObject assets with visual editor, validation, code generation, and one-click export.",
+  "keywords": [
+    "excel",
+    "json",
+    "scriptableobject",
+    "data",
+    "import",
+    "code-generation"
+  ],
+  "category": "Tools",
+  "dependencies": {},
+  "samples": [
+    {
+      "displayName": "Demo Data Usage",
+      "description": "Demo MonoBehaviour showing how to use the DataManager API at runtime. Requires exported data first (see Quick Start in README).",
+      "path": "Samples~/Demo"
+    }
+  ],
+  "author": {
+    "name": "zhouxiangyang789456-max",
+    "url": "https://github.com/zhouxiangyang789456-max/-Excel-JSON-"
+  },
+  "license": "MIT"
+}
