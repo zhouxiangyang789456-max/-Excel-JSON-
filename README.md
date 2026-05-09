@@ -1,5 +1,8 @@
 # Excel To JSON — Unity Editor Plugin
 
+[![中文文档](https://img.shields.io/badge/README-%E4%B8%AD%E6%96%87-blue?style=for-the-badge)](README_zh.md)
+[![English](https://img.shields.io/badge/README-English-2ea44f?style=for-the-badge)](README.md)
+
 A Unity Editor plugin that converts Excel spreadsheets into strongly-typed ScriptableObject assets with validation, code generation, and one-click export.
 
 ## Features
