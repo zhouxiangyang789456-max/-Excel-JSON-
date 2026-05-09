@@ -12,15 +12,31 @@ A Unity Editor plugin that converts Excel spreadsheets into strongly-typed Scrip
 - **Data preview**: Paginated table view with search and type-colored headers
 - **Runtime API**: Type-safe `DataManager` with Get/Find/GetRandom/GetByIds queries
 
+## Installation
+
+### Install via Git URL (recommended)
+1. Open Unity, go to **Window > Package Manager**
+2. Click the **+** button, select **"Add package from git URL"**
+3. Enter: `https://github.com/yourname/excel-to-json.git`
+4. Click **Add** — the plugin appears under `Packages/com.github.excel-to-json`
+
+### Install from Disk
+1. Clone or download this repository
+2. In Package Manager, click **+** → **"Add package from disk"**
+3. Select the `package.json` file in the repo root
+
+### Import Demos (optional)
+1. In Package Manager, select **"Excel To JSON"**
+2. Switch to the **Samples** tab
+3. Click **Import** on "Demo Data Usage"
+
 ## Quick Start
 
-1. Open **Window > Excel Data Manager**
-2. **Window > Excel Data Manager > Generate Sample Data** to create sample Excel files
-3. Select `Item.xlsx` in the file tree
+1. Put your `.xlsx` files in your project's `Assets/Excel/` folder
+2. Open **Window > Excel Data Manager**
+3. Select a sheet in the file tree
 4. Click **Export** (toolbar or Export tab)
-5. Open **Runtime API** tab → **Auto-Generate DataManager GameObject**
-6. Attach `DemoDataUsage.cs` (from `Demo/` folder) to the DataManager GameObject
-7. Press Play to see data query demos
+5. Code is generated to `Assets/Scripts/Generated/`, assets to `Assets/Data/`
 
 ## Supported Types
 
