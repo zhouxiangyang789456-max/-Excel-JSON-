@@ -17,7 +17,7 @@ A Unity Editor plugin that converts Excel spreadsheets into strongly-typed Scrip
 ### Install via Git URL (recommended)
 1. Open Unity, go to **Window > Package Manager**
 2. Click the **+** button, select **"Add package from git URL"**
-3. Enter: `https://github.com/yourname/excel-to-json.git`
+3. Enter: `https://github.com/zhouxiangyang789456-max/-Excel-JSON-.git`
 4. Click **Add** — the plugin appears under `Packages/com.github.excel-to-json`
 
 ### Install from Disk
