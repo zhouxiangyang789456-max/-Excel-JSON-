@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.4] — 2026-05-10
+### Fixed
+- UPM Git install: commit Unity `.meta` files for all package assets and folders. Without them, Unity reports *"has no meta file, but it's in an immutable folder"* and ignores scripts/DLLs, so the package appears empty.
+
 ## [1.0.3] — 2026-05-10
 ### Fixed
 - UPM / Git URL import: move NPOI and related DLLs to `Editor/` root (same folder as the Editor `.asmdef`) so Unity detects plugin assemblies reliably.
