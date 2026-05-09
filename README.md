@@ -1,81 +1,87 @@
-# Excel To JSON — Unity Editor Plugin
+# Excel To JSON — Unity 编辑器插件
 
-A Unity Editor plugin that converts Excel spreadsheets into strongly-typed ScriptableObject assets with validation, code generation, and one-click export.
+将 Excel 表格转换为强类型 ScriptableObject 资产，支持数据校验、代码生成、一键导出。
 
-## Features
+## 功能特性
 
-- **Excel → ScriptableObject pipeline**: Place .xlsx files in `Assets/Excel/`, export to `Assets/Data/` as .asset files
-- **16 built-in validation rules**: Structure, data integrity, type matching, cross-file references
-- **Three mapping modes**: Auto-generate C# (Mode A), C# reflection (Mode B), Hybrid (Mode C)
-- **File watcher**: Auto-export on Excel file changes (debounce configurable)
-- **Incremental export**: Only re-process changed sheets
-- **Data preview**: Paginated table view with search and type-colored headers
-- **Runtime API**: Type-safe `DataManager` with Get/Find/GetRandom/GetByIds queries
+- **Excel → ScriptableObject 流水线**：把 `.xlsx` 文件放入 `Assets/Excel/`，导出到 `Assets/Data/` 生成 `.asset` 文件
+- **16 条内置校验规则**：结构校验、数据完整性、类型匹配、跨表引用
+- **三种映射模式**：自动生成 C#（模式 A）、C# 反射匹配（模式 B）、混合模式（模式 C）
+- **文件监听**：Excel 文件变化自动导出（防抖可配置）
+- **增量导出**：仅重新处理变更的 Sheet
+- **数据预览**：分页表格视图，支持搜索和按类型着色表头
+- **运行时 API**：类型安全的 `DataManager`，支持 Get / Find / GetRandom / GetByIds
 
-## Installation
+## 安装
 
-### Install via Git URL (recommended)
-1. Open Unity, go to **Window > Package Manager**
-2. Click the **+** button, select **"Add package from git URL"**
-3. Enter: `https://github.com/zhouxiangyang789456-max/-Excel-JSON-.git`
-4. Click **Add** — the plugin appears under `Packages/com.github.excel-to-json`
+### Git URL 安装（推荐）
+1. 打开 Unity，进入 **Window > Package Manager**
+2. 点击 **+** 按钮，选择 **"Add package from git URL"**
+3. 输入：`https://github.com/zhouxiangyang789456-max/-Excel-JSON-.git`
+4. 点击 **Add** — 插件会出现在 `Packages/com.github.excel-to-json`
 
-### Install from Disk
-1. Clone or download this repository
-2. In Package Manager, click **+** → **"Add package from disk"**
-3. Select the `package.json` file in the repo root
+### 本地安装
+1. 克隆或下载本仓库
+2. 在 Package Manager 中点击 **+** → **"Add package from disk"**
+3. 选择仓库根目录下的 `package.json` 文件
 
-### Import Demos (optional)
-1. In Package Manager, select **"Excel To JSON"**
-2. Switch to the **Samples** tab
-3. Click **Import** on "Demo Data Usage"
+### 导入示例（可选）
+1. 在 Package Manager 中选中 **"Excel To JSON"**
+2. 切换到 **Samples** 标签页
+3. 点击 **Import** 导入 "Demo Data Usage"
 
-## Quick Start
+## 环境要求
 
-1. Put your `.xlsx` files in your project's `Assets/Excel/` folder
-2. Open **Window > Excel Data Manager**
-3. Select a sheet in the file tree
-4. Click **Export** (toolbar or Export tab)
-5. Code is generated to `Assets/Scripts/Generated/`, assets to `Assets/Data/`
+- **Unity 2021.3 LTS** 及以上
+- **API Compatibility Level**：必须设置为 **.NET Framework**（Edit → Project Settings → Player → Other Settings → API Compatibility Level）
+- 无需其他外部依赖（NPOI 已作为 DLL 内置）
 
-## Supported Types
+## 快速开始
 
-| Excel Type | C# Type | Example |
-|-----------|---------|---------|
+1. 将 `.xlsx` 文件放入项目的 `Assets/Excel/` 文件夹
+2. 打开 **Window > Excel Data Manager**
+3. 在文件树中选择一个 Sheet
+4. 点击 **导出**（工具栏或导出标签页）
+5. 代码生成到 `Assets/Scripts/Generated/`，资产生成到 `Assets/Data/`
+
+## 支持的类型
+
+| Excel 类型 | C# 类型 | 示例 |
+|-----------|---------|------|
 | `int` | `int` | `42` |
 | `float` | `float` | `3.14` |
 | `string` | `string` | `hello` |
 | `bool` | `bool` | `true` / `false` / `是` / `否` |
-| `int[]` | `int[]` | `1\|2\|3` or `[1,2,3]` |
+| `int[]` | `int[]` | `1\|2\|3` 或 `[1,2,3]` |
 | `float[]` | `float[]` | `1.0\|2.5\|3.0` |
 | `string[]` | `string[]` | `a\|b\|c` |
 | `Vector2` | `Vector2` | `[1,2]` |
 | `Vector3` | `Vector3` | `[1,2,3]` |
-| `Color` | `Color` | `#FF0000` or `[1,0,0,1]` |
-| `ref:TableName` | `int` | `1001` (FK reference) |
-| `enum:TableName` | `int` | `1` (enum value) |
+| `Color` | `Color` | `#FF0000` 或 `[1,0,0,1]` |
+| `ref:表名` | `int` | `1001`（外键引用） |
+| `enum:表名` | `int` | `1`（枚举值） |
 | `res:Sprite` | `string` | `Sprites/icon` |
 | `json` | `string` | `{"key":"value"}` |
-| `loc` | `string` | Localization key |
+| `loc` | `string` | 本地化 key |
 
-## Excel Format
+## Excel 格式
 
-Each data sheet has 4 rows of header:
-- **Row 1**: Field names (e.g., `id`, `name`, `attack`)
-- **Row 2**: Type declarations (e.g., `int`, `string`, `ref:Weapon`)
-- **Row 3**: Comments (optional, used as Tooltip in generated code)
-- **Row 4+**: Data rows
+每个数据 Sheet 有 4 行表头：
+- **第 1 行**：字段名（如 `id`、`name`、`attack`）
+- **第 2 行**：类型声明（如 `int`、`string`、`ref:Weapon`）
+- **第 3 行**：注释（可选，会作为生成代码的 Tooltip）
+- **第 4 行起**：数据行
 
-Sheets prefixed with `_` or `#` are skipped. `#Rules` sheets define custom validation rules.
+以 `_` 或 `#` 开头的 Sheet 会被跳过。`#Rules` Sheet 用于定义自定义校验规则。
 
-## Mapping Modes
+## 映射模式
 
-### Mode A: Excel-Driven (Auto Code Generation)
-- Designer defines fields in Excel
-- Plugin generates C# Row/Table classes
-- Best for prototyping and new projects
+### 模式 A：Excel 驱动（自动代码生成）
+- 策划在 Excel 中定义字段
+- 插件自动生成 C# Row/Table 类
+- 适合原型开发和新项目
 
-### Mode B: C#-Driven (Reflection Matching)
+### 模式 B：C# 驱动（反射匹配）
 ```csharp
 [ExcelTable("Weapon")]
 public class WeaponRow
@@ -90,74 +96,68 @@ public class WeaponRow
     public int Attack;
 
     [ExcelIgnore]
-    public int ComputedValue; // Not in Excel
+    public int ComputedValue; // 不在 Excel 中
 }
 ```
-- Programmer defines C# classes with attributes
-- Plugin matches Excel columns to C# fields
-- Best for existing projects with complex types
+- 程序员定义带属性的 C# 类
+- 插件自动匹配 Excel 列到 C# 字段
+- 适合已有项目和复杂类型
 
-### Mode C: Hybrid
-Each sheet independently chooses Mode A or B. Set per-sheet mode in Settings.
+### 模式 C：混合模式
+每个 Sheet 独立选择模式 A 或 B，在 Settings 中按 Sheet 配置。
 
-## Validation Rules
+## 校验规则
 
-### Stage 1 — Structure
-- Field name uniqueness
-- Type declaration validity
-- Header completeness
-- Field name sanity (no special chars)
+### 阶段 1 — 结构校验
+- 字段名唯一性
+- 类型声明有效性
+- 表头完整性
+- 字段名合法性（无特殊字符）
 
-### Stage 2 — Data
-- ID required and unique
-- Type matching (value vs declared type)
-- Required field check
-- Enum format sanity
-- Resource path format
-- Formula detection
+### 阶段 2 — 数据校验
+- ID 必须存在且唯一
+- 类型匹配（值 vs 声明类型）
+- 必填字段检查
+- 枚举格式校验
+- 资源路径格式校验
+- 公式检测
 
-### Stage 3 — Cross-Table References
-- ref integrity: Verify referenced IDs exist in target tables
-- enum existence: Verify enum values in target enum tables
+### 阶段 3 — 跨表引用校验
+- ref 完整性：验证引用的 ID 在目标表中是否存在
+- enum 存在性：验证枚举值在目标枚举表中是否存在
 
-### Custom Rules (#Rules sheet)
-Define in Excel: `range`, `regex`, `multiple`, `not_empty`, `required`, `enum`
+### 自定义规则（#Rules Sheet）
+在 Excel 中直接定义：`range`、`regex`、`multiple`、`not_empty`、`required`、`enum`
 
-## Runtime API
+## 运行时 API
 
 ```csharp
 var dm = DataManager.Instance;
 
-// Get table by type
+// 按类型获取表
 var weaponTable = dm.GetTable<WeaponTable>();
 
-// Query by ID (O(1))
+// 按 ID 查询（O(1)）
 var weapon = weaponTable.Get(1001);
 
-// Get all rows
+// 获取所有行
 foreach (var w in weaponTable.GetAll()) { ... }
 
-// Filter
+// 条件筛选
 var strong = weaponTable.Find(w => w.Attack > 30);
 
-// Random pick
+// 随机获取
 var random = weaponTable.GetRandom(w => w.Rarity >= 3);
 ```
 
-## Editor Window
+## 编辑器窗口
 
-- **Dashboard (Tab 0)**: Project overview, quick status, export buttons
-- **Data Preview (Tab 1)**: Paginated table view with search
-- **Validation (Tab 2)**: Error list with color icons, double-click navigation, CSV export
-- **Export (Tab 3)**: Export configuration, template generation, generated file list
-- **Runtime API (Tab 4)**: API reference, code examples, DataManager generation
+- **仪表盘（标签页 0）**：项目概览、快速状态、导出按钮
+- **数据预览（标签页 1）**：分页表格视图，支持搜索
+- **校验结果（标签页 2）**：按颜色图标显示错误列表，支持 CSV 导出
+- **导出（标签页 3）**：导出配置、模板生成、已生成文件列表
+- **运行时 API（标签页 4）**：API 参考、代码示例、DataManager 生成
 
-## Requirements
+## 许可证
 
-- Unity 2021.3 LTS or later
-- API Compatibility Level: .NET Framework
-- No external dependencies (NPOI bundled as DLLs)
-
-## License
-
-MIT License — free for personal and commercial use.
+MIT License — 个人和商业用途免费。
