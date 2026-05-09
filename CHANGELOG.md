@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.3] — 2026-05-10
+### Fixed
+- UPM / Git URL import: move NPOI and related DLLs to `Editor/` root (same folder as the Editor `.asmdef`) so Unity detects plugin assemblies reliably.
+- Editor assembly: set `overrideReferences` to `false` and drop explicit `precompiledReferences` so Unity can resolve framework assemblies together with bundled DLLs.
+
 ## [Sprint 3] — 2026-05-08
 ### Added
 - Mode B (C# reflection matching): Export data using [ExcelTable] / [ExcelColumn] attributed classes
