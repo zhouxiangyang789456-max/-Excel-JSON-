@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.5] — 2026-05-10
+### Fixed
+- Remove root `Samples~.meta` to avoid Unity warnings about an empty/hidden `Samples~` folder under UPM; sample content under `Samples~/Demo` keeps its own `.meta` files.
+
 ## [1.0.4] — 2026-05-10
 ### Fixed
 - UPM Git install: commit Unity `.meta` files for all package assets and folders. Without them, Unity reports *"has no meta file, but it's in an immutable folder"* and ignores scripts/DLLs, so the package appears empty.

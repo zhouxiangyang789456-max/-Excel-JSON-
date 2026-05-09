@@ -1,7 +1,7 @@
 {
   "name": "com.github.excel-to-json",
   "displayName": "Excel To JSON",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "unity": "2021.3",
   "description": "Convert Excel spreadsheets (.xlsx/.xls) into strongly-typed ScriptableObject assets with visual editor, validation, code generation, and one-click export.",
   "keywords": [

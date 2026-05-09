@@ -145,6 +145,8 @@ def collect_dirs(files: list[str]) -> list[str]:
         while str(parent) != ".":
             found.add(str(parent).replace("\\", "/"))
             parent = parent.parent
+    # UPM: do not emit Samples~.meta (Unity treats this root as special).
+    found.discard("Samples~")
     return sorted(found, key=lambda p: (p.count("/"), p.lower()))
 
 
