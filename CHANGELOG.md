@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.7] — 2026-05-10
+### Changed
+- Excel Data Manager: log a clear warning when an `.xlsx` cannot be read or when every sheet is skipped (names starting with `_` / `#`), so empty file trees are diagnosable from the Console.
+
 ## [1.0.6] — 2026-05-10
 ### Fixed
 - Excel Data Manager: choosing an Excel folder outside the Unity project (e.g. Desktop) now stores the **full absolute path**. Previously the picker path was collapsed to the folder name only, so scans targeted an empty folder under the project root and listed no `.xlsx` files.

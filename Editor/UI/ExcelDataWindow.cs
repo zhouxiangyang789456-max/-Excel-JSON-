@@ -135,8 +135,24 @@ namespace ExcelToJsonPlugin.Editor.UI
                         if (!sn.StartsWith("_") && !sn.StartsWith("#"))
                             entry.Sheets.Add(new SheetEntry { Name = sn });
                     }
+
+                    if (entry.Sheets.Count == 0 && readResult.SheetNames.Count > 0)
+                    {
+                        UnityEngine.Debug.LogWarning(
+                            $"[ExcelToJSON] 文件内所有工作表均被跳过（名称以 _ 或 # 开头）: {entry.FileName}\n" +
+                            $"工作表: {string.Join(\", \", readResult.SheetNames)}");
+                    }
+                    else if (entry.Sheets.Count == 0)
+                    {
+                        UnityEngine.Debug.LogWarning(
+                            $"[ExcelToJSON] 文件内没有可读的工作表: {entry.FileName}");
+                    }
                 }
-                catch { /* 文件被占用或损坏时跳过 */ }
+                catch (Exception ex)
+                {
+                    UnityEngine.Debug.LogWarning(
+                        $"[ExcelToJSON] 无法读取 Excel（可能被占用或文件损坏）: {fullPath}\n{ex.Message}");
+                }
 
                 fileEntries.Add(entry);
             }
