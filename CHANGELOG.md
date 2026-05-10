@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.6] — 2026-05-10
+### Fixed
+- Excel Data Manager: choosing an Excel folder outside the Unity project (e.g. Desktop) now stores the **full absolute path**. Previously the picker path was collapsed to the folder name only, so scans targeted an empty folder under the project root and listed no `.xlsx` files.
+
 ## [1.0.5] — 2026-05-10
 ### Fixed
 - Remove root `Samples~.meta` to avoid Unity warnings about an empty/hidden `Samples~` folder under UPM; sample content under `Samples~/Demo` keeps its own `.meta` files.

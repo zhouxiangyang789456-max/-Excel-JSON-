@@ -99,6 +99,14 @@ namespace ExcelToJsonPlugin.Editor.UI
             fileEntries.Clear();
             if (!Directory.Exists(excelDir))
             {
+                // Only auto-create default relative dirs under the project (e.g. Assets/Excel).
+                // Do not mkdir arbitrary names like "配置表" when an external folder pick was mis-resolved.
+                if (Path.IsPathRooted(excelDir))
+                {
+                    UnityEngine.Debug.LogWarning($"[ExcelToJSON] Excel directory not found: {excelDir}");
+                    return;
+                }
+
                 Directory.CreateDirectory(excelDir);
                 return;
             }
@@ -333,7 +341,10 @@ namespace ExcelToJsonPlugin.Editor.UI
                 var newDir = EditorUtility.OpenFolderPanel("Select Excel Directory", "Assets", "");
                 if (!string.IsNullOrEmpty(newDir))
                 {
-                    excelDir = GetRelativePath(newDir);
+                    // Store absolute normalized path. OpenFolderPanel returns a full OS path; using the old
+                    // GetRelativePath(picker) collapsed external folders to Path.GetFileName only (e.g. "配置表"),
+                    // which broke scanning Desktop/project-external Excel dirs.
+                    excelDir = NormalizeDirectoryPath(newDir);
                     RefreshFileList();
                 }
             }
@@ -801,11 +812,18 @@ namespace ExcelToJsonPlugin.Editor.UI
             };
         }
 
+        /// <summary>Normalize a directory from OpenFolderPanel / user input for consistent scanning.</summary>
+        private static string NormalizeDirectoryPath(string path)
+        {
+            var full = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return full.Replace("\\", "/");
+        }
+
         private string GetRelativePath(string fullPath)
         {
             var full = Path.GetFullPath(fullPath).Replace("\\", "/");
             var base_ = Path.GetFullPath(excelDir).Replace("\\", "/");
-            if (full.StartsWith(base_))
+            if (full.StartsWith(base_, StringComparison.OrdinalIgnoreCase))
                 return full.Substring(base_.Length).TrimStart('/');
             return Path.GetFileName(fullPath);
         }
